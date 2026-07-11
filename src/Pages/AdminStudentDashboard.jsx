@@ -44,7 +44,7 @@ export default function AdminStudentDashboard() {
 
         <div className="student-image-box">
           <img
-            src={student.photo_url || "/logo.png"}
+            src={student.photo_url || "/brand-mark.svg"}
             alt="student"
           />
         </div>

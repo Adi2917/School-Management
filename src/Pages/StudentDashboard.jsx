@@ -31,7 +31,7 @@ export default function StudentDashboard() {
         <div className="profile-section">
           <div className="profile-left">
             <img
-              src={student.photo_url || "/logo.png"}
+              src={student.photo_url || "/brand-mark.svg"}
               alt="Student"
               className="profile-image"
             />

@@ -133,7 +133,7 @@ export default function StudentProfile() {
 
         {/* Photo */}
         <div className="profile-photo">
-          <img src={student.photo_url || "/logo.png"} alt={student.name} />
+          <img src={student.photo_url || "/brand-mark.svg"} alt={student.name} />
         </div>
 
         {/* Detail rows */}

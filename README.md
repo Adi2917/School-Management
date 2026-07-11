@@ -1,18 +1,46 @@
-# React + Vite
+# Connect Your School
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A responsive school-management app for school registration, student profiles, fees, results and notifications. The frontend is React + Vite; data is stored safely in MongoDB Atlas through an Express API.
 
-Currently, two official plugins are available:
+## MongoDB Atlas setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Create a free account at https://www.mongodb.com/cloud/atlas/register
+2. Create a free **M0** cluster.
+3. Open **Database Access**, create a database user and save its username/password.
+4. Open **Network Access** and add your current IP. For a deployed API, allow the hosting provider's outbound IP (or use `0.0.0.0/0` with a strong database password).
+5. Click **Connect → Drivers → Node.js** and copy the connection string.
+6. Copy `.env.example` to `.env`, then replace `YOUR_USERNAME`, `YOUR_PASSWORD`, and `YOUR_CLUSTER` in `MONGODB_URI`. URL-encode special characters in the password.
 
-## React Compiler
+```env
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/connect_your_school?retryWrites=true&w=majority
+PORT=5000
+CLIENT_URL=http://localhost:5173
+VITE_API_URL=http://localhost:5000/api
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Never commit `.env` or put `MONGODB_URI` in a `VITE_` variable; Vite variables are public in the browser.
 
-## Expanding the ESLint configuration
+## Run locally
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-"# Skmissionapp" 
-"# School-Management" 
+Open two terminals:
+
+```bash
+npm run dev:server
+npm run dev
+```
+
+The frontend runs at `http://localhost:5173`; the API runs at `http://localhost:5000`. Check database connectivity at `http://localhost:5000/api/health`.
+
+## Deploy
+
+- Deploy the Express API (`server/index.js`) to Render, Railway or another Node host. Add `MONGODB_URI` and `CLIENT_URL` as server environment variables.
+- Keep the frontend on Netlify. Add `VITE_API_URL=https://your-api-domain.example/api` in Netlify environment variables and redeploy.
+- Do not deploy the API as a static Netlify site.
+
+## Commands
+
+- `npm run dev` — frontend development server
+- `npm run dev:server` — API development server
+- `npm run build` — production frontend build
+- `npm run server` — production API server
+- `npm run lint` — lint project files

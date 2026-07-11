@@ -87,8 +87,8 @@ export default function AdminDashboard() {
     <div className="dashboard-wrapper">
       <div className="dashboard-card">
 
-        <h1 className="school-title">{admin?.school_name || "SK Mission School"}</h1>
-        <img src="/src/assets/logo.png" alt="logo" className="school-logo" />
+        <h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1>
+        <img src={admin?.school_logo || "/brand-mark.svg"} alt="Connect Your School" className="school-logo" />
         <p className="admin-sub">Hi {admin?.admin_name || "Admin"} Here</p>
 
         {/* Search */}

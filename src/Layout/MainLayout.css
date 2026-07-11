@@ -1,4 +1,4 @@
 .app-content {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  background: radial-gradient(circle at 90% 5%, rgba(244, 200, 91, .18), transparent 25%), linear-gradient(145deg, #f9f5ed, #f3ecdf);
 }

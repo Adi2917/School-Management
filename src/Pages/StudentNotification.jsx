@@ -34,7 +34,7 @@ export default function StudentNotification() {
         {notifications.map((item) => (
           <div key={item.id} className="chat-bubble">
 
-            <h4>{item.title}</h4>
+            <h4>{item.tittle || item.title}</h4>
             <p>{item.message}</p>
 
             {item.image_url && item.image_url.includes(".mp4") ? (

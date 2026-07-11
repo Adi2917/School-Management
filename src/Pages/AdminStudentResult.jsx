@@ -187,7 +187,7 @@ return(
 
 <div className="admin-result-container">
 
-<img src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/logo.png"} className="logo"/>
+<img src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/brand-mark.svg"} className="logo"/>
 
 <h2>{JSON.parse(localStorage.getItem("schoolData") || "{}").school_name || "School Portal"}</h2>
 

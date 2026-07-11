@@ -27,16 +27,19 @@ const fetchExamList=async()=>{
 
 const {data}=await supabase
 .from("results")
-.select("exam_type_id,exam_types(name)")
+.select("*")
 .eq("student_id",studentId);
 
 if(data){
+
+const {data:examTypes}=await supabase.from("exam_types").select("*");
+const examNames=Object.fromEntries((examTypes||[]).map(exam=>[exam.id,exam.name]));
 
 const unique=Object.values(
 
 data.reduce((acc,item)=>{
 
-acc[item.exam_type_id]=item;
+acc[item.exam_type_id]={...item,exam_types:{name:examNames[item.exam_type_id]||"Examination"}};
 
 return acc;
 
@@ -136,7 +139,7 @@ onClick={()=>setSelectedExam(false)}
 
 
 <img
-src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/logo.png"}
+src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/brand-mark.svg"}
 className="school-logo"
 />
 
