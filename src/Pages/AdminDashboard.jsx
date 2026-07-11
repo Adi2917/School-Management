@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [schoolCode, setSchoolCode] = useState("");
   const [allStudents, setAllStudents] = useState([]);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const classes = [
     "Nursery","LKG","UKG",
@@ -73,7 +74,7 @@ export default function AdminDashboard() {
       <div className="admin-command">
         <aside className="admin-command__rail">
           <div className="rail-logo"><BookOpen/></div><b>School<br/>Console</b>
-          <nav><span className="active"><LayoutDashboard/> Overview</span><span><Users/> Students</span><span><BellRing/> Notices</span></nav>
+          <nav><button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><LayoutDashboard/> Overview</button><button className={activeTab === "students" ? "active" : ""} onClick={() => setActiveTab("students")}><Users/> Students</button><button onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Notices</button></nav>
           <div className="rail-secure"><ShieldCheck/><small>Protected<br/>workspace</small></div>
         </aside>
         <section className="dashboard-card">
@@ -121,10 +122,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="admin-section-title"><div><span>ACADEMIC DIRECTORY</span><h2>Browse classes</h2></div><small>Select a class to view students</small></div>
-        <div className="class-launcher">
-          {classes.map((cls) => <button key={cls} onClick={() => navigate(`/AdminStudentClass/${cls}`)}><span>{["Nursery","LKG","UKG"].includes(cls) ? cls : `Class ${cls}`}</span><ChevronRight/></button>)}
-        </div>
+        {activeTab === "overview" ? <><div className="admin-section-title"><div><span>ACADEMIC DIRECTORY</span><h2>Browse classes</h2></div><small>Select a class to view students</small></div><div className="class-launcher">{classes.map((cls) => <button key={cls} onClick={() => navigate(`/AdminStudentClass/${cls}`)}><span>{["Nursery","LKG","UKG"].includes(cls) ? cls : `Class ${cls}`}</span><ChevronRight/></button>)}</div></> : <><div className="admin-section-title"><div><span>STUDENT DIRECTORY</span><h2>All students</h2></div><small>{allStudents.length} registered records</small></div><div className="student-directory"><div className="student-directory__head"><span>Student</span><span>Class</span><span>Section</span><span>Roll</span><span>Profile</span></div>{(searchTerm ? students : allStudents).map(student => <button key={student.id} onClick={() => navigate(`/AdminStudentDashboard/${student.id}`)}><span className="student-directory__person"><img src={student.photo_url || "/brand-mark.svg"} alt=""/><b>{student.name}</b></span><span>{student.class}</span><span>{student.section}</span><span>{student.roll}</span><span>View <ChevronRight/></span></button>)}{(searchTerm ? students : allStudents).length === 0 && <div className="student-directory__empty"><Users/><b>No students found</b><small>Registered students will appear here.</small></div>}</div></>}
         <div className="admin-actions"><button className="primary-btn" onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Create notification</button><button className="logout-btn" onClick={handleLogout}><LogOut/> Logout</button></div>
         </section>
       </div>

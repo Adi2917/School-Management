@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./StudentFees.css";
+import { CalendarCheck, CircleDollarSign, Clock3, ReceiptIndianRupee } from "lucide-react";
 
 const monthsOrder = [
   "March","April","May","June","July","August",
@@ -36,7 +37,9 @@ export default function StudentFees() {
     <div className="student-wrapper">
       <div className="student-card">
 
-        <h2>My Fees Status</h2>
+        <div className="fees-hero"><span><ReceiptIndianRupee/></span><div><small>MY ACCOUNTS</small><h2>My Fees Status</h2><p>Track every monthly payment in one place.</p></div></div>
+        <div className="fees-summary"><div><CalendarCheck/><span><b>{fees.filter(f=>f.status === "Paid").length}</b><small>Paid months</small></span></div><div><Clock3/><span><b>{fees.filter(f=>f.status !== "Paid").length}</b><small>Pending months</small></span></div><div><CircleDollarSign/><span><b>{fees.length}</b><small>Academic cycle</small></span></div></div>
+        <div className="fees-grid">
 
         {fees.map((fee) => (
           <div key={fee.id} className="student-row">
@@ -64,7 +67,7 @@ export default function StudentFees() {
             </div>
 
           </div>
-        ))}
+        ))}</div>
 
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./AdminStudentFees.css";
+import { CalendarCheck, CircleDollarSign, Clock3, ReceiptIndianRupee } from "lucide-react";
 
 const monthsOrder = [
   "March","April","May","June","July","August",
@@ -12,9 +13,11 @@ const monthsOrder = [
 export default function AdminStudentFees() {
   const { id } = useParams();
   const [fees, setFees] = useState([]);
+  const [student, setStudent] = useState(null);
 
   useEffect(() => {
     fetchFees();
+    supabase.from("students").select("*").eq("id", id).single().then(({ data }) => setStudent(data));
   }, [id]);
 
   const fetchFees = async () => {
@@ -61,7 +64,9 @@ export default function AdminStudentFees() {
     <div className="admin-wrapper">
       <div className="admin-card">
 
-        <h2>Manage Student Fees</h2>
+        <div className="fees-hero"><span><ReceiptIndianRupee/></span><div><small>FINANCE DESK</small><h2>Manage Student Fees</h2><p>{student?.name || "Student"} · Class {student?.class || "—"} · Roll {student?.roll || "—"}</p></div></div>
+        <div className="fees-summary"><div><CalendarCheck/><span><b>{fees.filter(f=>f.status === "Paid").length}</b><small>Paid months</small></span></div><div><Clock3/><span><b>{fees.filter(f=>f.status !== "Paid").length}</b><small>Pending months</small></span></div><div><CircleDollarSign/><span><b>{fees.length}</b><small>Academic cycle</small></span></div></div>
+        <div className="fees-grid">
 
         {fees.map((fee) => (
           <div key={fee.id} className="admin-row">
@@ -97,7 +102,7 @@ export default function AdminStudentFees() {
             </div>
 
           </div>
-        ))}
+        ))}</div>
 
       </div>
     </div>
