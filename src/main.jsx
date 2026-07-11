@@ -5,6 +5,7 @@ import App from "./App";
 import "./index.css";
 import "./theme.css";
 import "./premium.css";
+import "./final-polish.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
