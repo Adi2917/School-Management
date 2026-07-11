@@ -5,9 +5,10 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import crypto from "node:crypto";
 import multer from "multer";
+import { pathToFileURL } from "node:url";
 
 dotenv.config();
-const app = express();
+export const app = express();
 const port = process.env.PORT || 5000;
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
 app.use(cors({ origin: process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : true }));
@@ -48,5 +49,17 @@ app.delete("/api/:collection", guard, async (req, res, next) => { try { res.json
 // eslint-disable-next-line no-unused-vars
 app.use((error, _req, res, _next) => res.status(500).json({ message: error.message }));
 
-if (!process.env.MONGODB_URI) { console.error("Missing MONGODB_URI. Add your Atlas connection string to .env"); process.exit(1); }
-mongoose.connect(process.env.MONGODB_URI).then(() => app.listen(port, () => console.log(`Connect Your School API: http://localhost:${port}`))).catch((error) => { console.error(error.message); process.exit(1); });
+let connectionPromise;
+export function connectDatabase() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  if (!process.env.MONGODB_URI) return Promise.reject(new Error("Missing MONGODB_URI"));
+  connectionPromise ||= mongoose.connect(process.env.MONGODB_URI);
+  return connectionPromise;
+}
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isDirectRun) {
+  connectDatabase()
+    .then(() => app.listen(port, () => console.log(`Connect Your School API: http://localhost:${port}`)))
+    .catch((error) => { console.error(error.message); process.exit(1); });
+}

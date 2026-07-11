@@ -1,4 +1,5 @@
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+const DEFAULT_API_URL = import.meta.env.DEV ? "http://localhost:5000/api" : "/api";
+const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 
 class QueryBuilder {
   constructor(collection) { this.collection = collection; this.filters = []; this.action = "select"; this.payload = null; this.one = false; }
