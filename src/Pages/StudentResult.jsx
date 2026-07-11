@@ -136,14 +136,14 @@ onClick={()=>setSelectedExam(false)}
 
 
 <img
-src="/logo.png"
+src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/logo.png"}
 className="school-logo"
 />
 
 
 <h2 className="school-name">
 
-SK Mission School
+{JSON.parse(localStorage.getItem("schoolData") || "{}").school_name || "School Portal"}
 
 </h2>
 

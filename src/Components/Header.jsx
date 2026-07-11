@@ -4,6 +4,7 @@ import "./Header.css";
 
 export default function Header() {
   const navigate = useNavigate();
+  const schoolData = JSON.parse(localStorage.getItem("schoolData") || "{}");
 
   return (
     <div className="app-header">
@@ -11,7 +12,7 @@ export default function Header() {
         <ArrowLeft size={22} />
       </button>
 
-      <span className="header-title">SK Mission School</span>
+      <span className="header-title">{schoolData.school_name || "School Portal"}</span>
 
       <div className="header-right" />
     </div>

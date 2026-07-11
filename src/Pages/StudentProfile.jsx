@@ -18,6 +18,14 @@ export default function StudentProfile() {
   useEffect(() => {
     const fetchStudent = async () => {
       try {
+        const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+        const localStudent = localRegistry.find((item) => item.id === id);
+
+        if (localStudent) {
+          setStudent(localStudent);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("students")
           .select("*")
@@ -29,6 +37,13 @@ export default function StudentProfile() {
         setStudent(data);
       } catch (err) {
         console.error("Error fetching student:", err);
+
+        const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+        const localStudent = localRegistry.find((item) => item.id === id);
+
+        if (localStudent) {
+          setStudent(localStudent);
+        }
       } finally {
         setLoading(false);
       }
@@ -48,6 +63,15 @@ export default function StudentProfile() {
   // ================= SAVE UPDATE =================
   const handleSave = async () => {
     try {
+      const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+      const updatedStudent = { ...student, [editField]: newValue };
+      const updatedRegistry = localRegistry.map((item) =>
+        item.id === id ? updatedStudent : item
+      );
+
+      localStorage.setItem("studentRegistry", JSON.stringify(updatedRegistry));
+      localStorage.setItem("studentData", JSON.stringify(updatedStudent));
+
       const { data, error } = await supabase
         .from("students")
         .update({ [editField]: newValue })
@@ -57,11 +81,23 @@ export default function StudentProfile() {
 
       if (error) throw error;
 
-      setStudent(data);
+      setStudent(data || updatedStudent);
       setEditField(null);
       setNewValue("");
     } catch (err) {
       console.error("Error updating student:", err);
+
+      const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+      const updatedStudent = { ...student, [editField]: newValue };
+      const updatedRegistry = localRegistry.map((item) =>
+        item.id === id ? updatedStudent : item
+      );
+
+      localStorage.setItem("studentRegistry", JSON.stringify(updatedRegistry));
+      localStorage.setItem("studentData", JSON.stringify(updatedStudent));
+      setStudent(updatedStudent);
+      setEditField(null);
+      setNewValue("");
     }
   };
 
@@ -97,7 +133,7 @@ export default function StudentProfile() {
 
         {/* Photo */}
         <div className="profile-photo">
-          <img src={student.photo_url} alt={student.name} />
+          <img src={student.photo_url || "/logo.png"} alt={student.name} />
         </div>
 
         {/* Detail rows */}

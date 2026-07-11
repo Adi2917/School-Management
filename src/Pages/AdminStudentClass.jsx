@@ -7,24 +7,45 @@ export default function AdminStudentClass() {
   const { className } = useParams();
   const navigate = useNavigate();
 
+  const [schoolCode, setSchoolCode] = useState("");
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [section, setSection] = useState("");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetchStudents();
+    const schoolData = JSON.parse(localStorage.getItem("schoolData") || localStorage.getItem("adminData") || "{}");
+    setSchoolCode(schoolData?.school_code || "");
+    fetchStudents(schoolData?.school_code || "");
   }, [className]);
 
-  const fetchStudents = async () => {
-    const { data, error } = await supabase
-      .from("students")
-      .select("*")
-      .eq("class", className);
+  const fetchStudents = async (activeSchoolCode) => {
+    const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+    const localData = localRegistry.filter(
+      (student) =>
+        student.school_code === activeSchoolCode && student.class === className
+    );
 
-    if (!error) {
-      setStudents(data);
-      setFilteredStudents(data);
+    if (localData.length > 0) {
+      setStudents(localData);
+      setFilteredStudents(localData);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("students")
+        .select("*")
+        .eq("school_code", activeSchoolCode)
+        .eq("class", className);
+
+      if (!error) {
+        setStudents(data || []);
+        setFilteredStudents(data || []);
+      }
+    } catch {
+      setStudents([]);
+      setFilteredStudents([]);
     }
   };
 

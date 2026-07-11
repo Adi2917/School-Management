@@ -6,6 +6,7 @@ import "./StudentLogin.css";
 export default function StudentLogin() {
   const navigate = useNavigate();
 
+  const [schoolCode, setSchoolCode] = useState("");
   const [number, setNumber] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,9 @@ export default function StudentLogin() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (!schoolCode.trim())
+      return showPopup("error", "Enter school code");
+
     if (number.length !== 10)
       return showPopup("error", "Enter valid 10 digit number");
 
@@ -36,9 +40,26 @@ export default function StudentLogin() {
     setLoading(true);
 
     try {
+      const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+      const localMatch = localRegistry.find(
+        (student) =>
+          student.school_code === schoolCode.trim() &&
+          student.number === number &&
+          student.pin === pin
+      );
+
+      if (localMatch) {
+        localStorage.setItem("studentData", JSON.stringify(localMatch));
+        setLoading(false);
+        showPopup("success", "Login Successful 🎉");
+        setTimeout(() => navigate("/StudentDashboard"), 1000);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("students")
         .select("*")
+        .eq("school_code", schoolCode.trim())
         .eq("number", number)
         .eq("pin", pin)
         .single();
@@ -49,7 +70,6 @@ export default function StudentLogin() {
         return showPopup("error", "Invalid Credentials");
       }
 
-      // ✅ Save student data locally (optional but useful)
       localStorage.setItem("studentData", JSON.stringify(data));
 
       showPopup("success", "Login Successful 🎉");
@@ -78,6 +98,14 @@ export default function StudentLogin() {
         <h2>Student Login</h2>
 
         <form onSubmit={handleLogin}>
+          <input
+            type="text"
+            placeholder="Enter School Code"
+            value={schoolCode}
+            onChange={(e) => setSchoolCode(e.target.value)}
+            required
+          />
+
           <input
             type="text"
             placeholder="Enter Registered Number"

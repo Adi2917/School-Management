@@ -187,9 +187,9 @@ return(
 
 <div className="admin-result-container">
 
-<img src="/logo.png" className="logo"/>
+<img src={JSON.parse(localStorage.getItem("schoolData") || "{}").school_logo || "/logo.png"} className="logo"/>
 
-<h2>SK Mission School</h2>
+<h2>{JSON.parse(localStorage.getItem("schoolData") || "{}").school_name || "School Portal"}</h2>
 
 <h3>Upload Result</h3>
 

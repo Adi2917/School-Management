@@ -11,7 +11,6 @@
   z-index: 9999;
 }
 
-/* BACKDROP BLUR */
 .profile-backdrop {
   position: absolute;
   top: 0;
@@ -19,27 +18,26 @@
   width: 100%;
   height: 100%;
   backdrop-filter: blur(10px);
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.52);
 }
 
-/* CENTER CARD */
 .profile-card {
   position: relative;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(20px);
   border-radius: 25px;
   padding: 30px 40px;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 30px 70px rgba(0,0,0,0.6);
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.16);
   display: flex;
   flex-direction: column;
   gap: 20px;
   z-index: 10;
-  color: white;
+  color: #0f172a;
+  border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
-/* CLOSE BUTTON */
 .close-btn {
   position: absolute;
   top: 15px;
@@ -48,7 +46,7 @@
   font-weight: bold;
   background: transparent;
   border: none;
-  color: white;
+  color: #475569;
   cursor: pointer;
   transition: 0.3s ease;
 }
@@ -58,7 +56,6 @@
   transform: scale(1.2);
 }
 
-/* PROFILE PHOTO */
 .profile-photo {
   display: flex;
   justify-content: center;
@@ -69,39 +66,36 @@
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  border: 5px solid #2563eb;
+  border: 5px solid #bfdbfe;
   object-fit: cover;
-  box-shadow: 0 15px 40px rgba(37,99,235,0.6);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.18);
 }
 
-/* ROWS */
 .profile-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.12);
 }
 
 .profile-row:last-child {
   border-bottom: none;
 }
 
-/* LABEL + VALUE */
 .label {
-  font-weight: 600;
-  color: #cbd5e1;
+  font-weight: 700;
+  color: #64748b;
   flex: 1;
 }
 
 .value {
   flex: 2;
-  color: white;
-  font-weight: 500;
+  color: #0f172a;
+  font-weight: 600;
 }
 
-/* EDIT ICON */
 .edit-icon {
   cursor: pointer;
   color: #2563eb;
@@ -113,24 +107,24 @@
   transform: scale(1.2);
 }
 
-/* INPUT FIELD */
 input[type="text"] {
   flex: 2;
-  padding: 5px 10px;
+  padding: 8px 10px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid rgba(37, 99, 235, 0.22);
   outline: none;
   font-size: 14px;
+  background: #ffffff;
+  color: #0f172a;
 }
 
-/* SAVE BUTTON */
 .save-btn {
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: 8px;
   background: linear-gradient(135deg, #10b981, #047857);
   border: none;
   color: white;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   margin-left: 5px;
   transition: 0.3s ease;
@@ -138,12 +132,11 @@ input[type="text"] {
 
 .save-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(16,185,129,0.5);
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
 }
 
-/* LOADING */
 .loading {
-  color: white;
+  color: #0f172a;
   font-size: 20px;
   margin-top: 50px;
   text-align: center;

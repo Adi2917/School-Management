@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FaWhatsapp, FaEnvelope, FaPhone } from "react-icons/fa";
-import logo from "../assets/logo.png";
+import { FaBuilding, FaGraduationCap, FaArrowRight } from "react-icons/fa";
 import "./Home.css";
 
 const Home = () => {
@@ -9,48 +8,45 @@ const Home = () => {
 
   return (
     <div className="home-wrapper">
-      <div className="glass-card">
+      <div className="home-shell">
+        <div className="home-content">
+          <span className="home-badge">Education Platform</span>
 
-        <div className="logo-wrap">
-          <img src={logo} alt="SK Mission School" />
+          <h1 className="home-title">Register Your School • Join Your School</h1>
+
+          <p className="home-subtitle">
+            One clean school-first experience for school registration, student joining,
+            and secure admin access.
+          </p>
+
+          <div className="home-cards">
+            <div className="feature-card feature-primary">
+              <div className="feature-icon">
+                <FaBuilding size={24} />
+              </div>
+              <h2>Register Your School</h2>
+              <p>
+                Add your school profile, set a 6-digit school code, and create the admin credentials.
+              </p>
+              <button onClick={() => navigate("/SchoolRegister")}>
+                Register Your School <FaArrowRight />
+              </button>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <FaGraduationCap size={24} />
+              </div>
+              <h2>Join Your School</h2>
+              <p>
+                Students and admins can join using their school code and secure personal pin.
+              </p>
+              <button onClick={() => navigate("/StudentChoice")}>
+                Join Your School <FaArrowRight />
+              </button>
+            </div>
+          </div>
         </div>
-
-        <h1 className="title">
-          SK Mission
-          <span>School</span>
-        </h1>
-
-        <p className="subtitle">
-          Smart Student Management System
-        </p>
-
-        <div className="button-group">
-          <button
-            className="btn-main"
-            onClick={() => navigate("/StudentChoice")}
-          >
-            Enter Student Portal
-          </button>
-
-          <button
-            className="btn-alt"
-            onClick={() => navigate("/AdminLogin")}
-          >
-            Admin Access
-          </button>
-        </div>
-      </div>
-
-      <div className="floating-contact">
-        <a href="mailto:info@skmission.com">
-          <FaEnvelope />
-        </a>
-        <a href="https://wa.me/8116360090" target="_blank" rel="noreferrer">
-          <FaWhatsapp />
-        </a>
-        <a href="tel:+8116360090">
-          <FaPhone />
-        </a>
       </div>
     </div>
   );

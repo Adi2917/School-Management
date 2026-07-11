@@ -2,22 +2,23 @@
   display: flex;
   justify-content: center;
   padding: 40px;
-  background: #0f172a;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
   min-height: 100vh;
 }
 
 .admin-card {
   width: 650px;
-  background: #1e293b;
+  background: #ffffff;
   padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-  color: white;
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
 .admin-card h2 {
   margin-bottom: 25px;
-  color: #38bdf8;
+  color: #1d4ed8;
 }
 
 .admin-row {
@@ -25,11 +26,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 0;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.14);
 }
 
 .month-name {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16px;
 }
 
@@ -56,12 +57,12 @@
 select {
   padding: 6px 10px;
   border-radius: 6px;
-  background: #0f172a;
-  color: white;
-  border: 1px solid #475569;
+  background: #eff6ff;
+  color: #0f172a;
+  border: 1px solid rgba(37, 99, 235, 0.24);
 }
 
 .paid-date {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
 }

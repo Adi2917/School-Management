@@ -13,13 +13,25 @@ export default function AdminStudentDashboard() {
   }, []);
 
   const fetchStudent = async () => {
-    const { data, error } = await supabase
-      .from("students")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
+    const localStudent = localRegistry.find((item) => item.id === id);
 
-    if (!error) setStudent(data);
+    if (localStudent) {
+      setStudent(localStudent);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("students")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!error) setStudent(data);
+    } catch {
+      setStudent(null);
+    }
   };
 
   if (!student) return <div className="loading">Loading...</div>;
@@ -32,7 +44,7 @@ export default function AdminStudentDashboard() {
 
         <div className="student-image-box">
           <img
-            src={student.photo_url || "/default-avatar.png"}
+            src={student.photo_url || "/logo.png"}
             alt="student"
           />
         </div>

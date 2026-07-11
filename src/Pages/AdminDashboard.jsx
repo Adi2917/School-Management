@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [schoolCode, setSchoolCode] = useState("");
 
   const classes = [
     "Nursery","LKG","UKG",
@@ -16,14 +17,22 @@ export default function AdminDashboard() {
   ];
 
   useEffect(() => {
+    const schoolData = localStorage.getItem("schoolData");
     const adminData = localStorage.getItem("adminData");
-    if (!adminData) navigate("/AdminLogin");
-    else setAdmin(JSON.parse(adminData));
+
+    if (!schoolData && !adminData) {
+      navigate("/SchoolLogin");
+      return;
+    }
+
+    const activeSchool = JSON.parse(schoolData || adminData || "{}");
+    setAdmin(activeSchool);
+    setSchoolCode(activeSchool?.school_code || "");
   }, [navigate]);
 
   // 🔥 Debounced realtime search
   useEffect(() => {
-    const delay = setTimeout(async () => {
+    const delay = setTimeout(() => {
       if (searchTerm.trim() === "") {
         setStudents([]);
         return;
@@ -31,22 +40,44 @@ export default function AdminDashboard() {
 
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .ilike("name", `%${searchTerm}%`);
+      const studentRegistry = JSON.parse(
+        localStorage.getItem("studentRegistry") || "[]"
+      );
 
-      if (!error) setStudents(data);
-      else setStudents([]);
+      const localMatches = studentRegistry.filter(
+        (student) =>
+          student.school_code === schoolCode &&
+          student.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
+      setStudents(localMatches);
       setLoading(false);
-    }, 300); // smooth delay
+
+      if (localMatches.length === 0) {
+        (async () => {
+          try {
+            const { data, error } = await supabase
+              .from("students")
+              .select("*")
+              .eq("school_code", schoolCode)
+              .ilike("name", `%${searchTerm}%`);
+
+            if (!error && data) {
+              setStudents(data);
+            }
+          } catch {
+            setStudents([]);
+          }
+        })();
+      }
+    }, 300);
 
     return () => clearTimeout(delay);
-  }, [searchTerm]);
+  }, [searchTerm, schoolCode]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminData");
+    localStorage.removeItem("schoolData");
     navigate("/Home");
   };
 
@@ -56,9 +87,9 @@ export default function AdminDashboard() {
     <div className="dashboard-wrapper">
       <div className="dashboard-card">
 
-        <h1 className="school-title">SK Mission School</h1>
+        <h1 className="school-title">{admin?.school_name || "SK Mission School"}</h1>
         <img src="/src/assets/logo.png" alt="logo" className="school-logo" />
-        <p className="admin-sub">Hi Admin Here</p>
+        <p className="admin-sub">Hi {admin?.admin_name || "Admin"} Here</p>
 
         {/* Search */}
         <div className="input-block">

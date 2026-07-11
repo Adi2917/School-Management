@@ -1,58 +1,57 @@
 import "./StudentChoice.css";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
 
 export default function StudentChoice() {
   const navigate = useNavigate();
 
-  const handleLoginClick = () => {
+  const handleStudentLogin = () => {
     const studentData = localStorage.getItem("studentData");
     if (studentData) {
-      // Already logged in → direct dashboard
       navigate("/StudentDashboard");
     } else {
-      // Not logged in → go to login page
       navigate("/StudentLogin");
+    }
+  };
+
+  const handleAdminLogin = () => {
+    const schoolData = localStorage.getItem("schoolData");
+    if (schoolData) {
+      navigate("/AdminDashboard");
+    } else {
+      navigate("/SchoolLogin");
     }
   };
 
   return (
     <div className="choice-container">
-      <div className="choice-bg-glow"></div>
-
       <div className="choice-card">
-        <div className="choice-logo">
-          <img src={logo} alt="SK Mission School" />
-        </div>
+        <div className="choice-pill">Join Your School</div>
 
-        <h1 className="choice-title">
-          Student Portal
-        </h1>
+        <h1 className="choice-title">Choose your access</h1>
 
         <p className="choice-desc">
-          Register as a new student or login to access your dashboard securely.
+          Students can register or log in with their school code and pin,
+          while admins can securely enter the school dashboard.
         </p>
 
         <div className="choice-buttons">
-          <button
-            className="btn-primary"
-            onClick={() => navigate("/StudentRegister")}
-          >
-            Create New Account
+          <button className="btn-primary" onClick={() => navigate("/StudentRegister")}>
+            Register as Student
           </button>
 
-          <button
-            className="btn-outline"
-            onClick={handleLoginClick}
-          >
-            Login to Existing Account
+          <button className="btn-outline" onClick={handleStudentLogin}>
+            Login as Student
+          </button>
+
+          <button className="btn-outline admin-btn" onClick={handleAdminLogin}>
+            Admin Login
           </button>
         </div>
 
         <div className="choice-divider"></div>
 
         <p className="choice-footer">
-          © {new Date().getFullYear()} SK Mission School
+          Secure school-first access for every connected device.
         </p>
       </div>
     </div>
