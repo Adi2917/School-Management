@@ -8,7 +8,6 @@ import SchoolRegister from "./Pages/SchoolRegister";
 import SchoolLogin from "./Pages/SchoolLogin";
 import StudentDashboard from "./Pages/StudentDashboard";
 import StudentProfile from "./Pages/StudentProfile";
-import AdminLogin from "./Pages/AdminLogin";
 import AdminDashboard from "./Pages/AdminDashboard";
 import AdminStudentDashboard from "./Pages/AdminStudentDashboard";
 import AdminStudentClass from "./Pages/AdminStudentClass";
@@ -40,7 +39,7 @@ function App() {
 
         <Route path="/StudentProfile/:id" element={<StudentProfile />} />
 
-        <Route path="/AdminLogin" element={<AdminLogin />} />
+        <Route path="/AdminLogin" element={<SchoolLogin />} />
         <Route path="/AdminDashboard" element={<AdminDashboard />} />
 
         <Route path="/AdminStudentClass/:className" element={<AdminStudentClass />} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { uploadMedia } from "../mediaClient";
 import "./AdminStudentNotification.css";
 
 export default function AdminStudentNotification() {
@@ -56,22 +57,15 @@ export default function AdminStudentNotification() {
     const deviceTime = new Date().toISOString();
 
     if (media) {
-      const filePath = `uploads/${Date.now()}-${media.name}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("notifications")
-        .upload(filePath, media);
-
-      if (!uploadError) {
-        const { data } = supabase.storage
-          .from("notifications")
-          .getPublicUrl(filePath);
-
-        if (mediaType === "image" || mediaType === "video") {
-          image_url = data.publicUrl;
-        } else {
-          file_url = data.publicUrl;
-        }
+      try {
+        const uploadedUrl = await uploadMedia(media);
+        if (mediaType === "image" || mediaType === "video") image_url = uploadedUrl;
+        else file_url = uploadedUrl;
+      } catch (error) {
+        console.error(error);
+        setLoading(false);
+        alert("Media upload failed");
+        return;
       }
     }
 

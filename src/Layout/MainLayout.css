@@ -2,3 +2,4 @@
   min-height: 100vh;
   background: radial-gradient(circle at 90% 5%, rgba(244, 200, 91, .18), transparent 25%), linear-gradient(145deg, #f9f5ed, #f3ecdf);
 }
+.app-content > :not(.app-header) { padding-top: 84px; }

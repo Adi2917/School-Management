@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { uploadMedia } from "../mediaClient";
 import "./StudentRegister.css";
 
 export default function StudentRegister() {
@@ -41,10 +42,12 @@ export default function StudentRegister() {
       setSchoolProfile(null);
       return;
     }
-
-    const registry = JSON.parse(localStorage.getItem("schoolRegistry") || "[]");
-    const match = registry.find((item) => item.school_code === code);
-    setSchoolProfile(match || null);
+    if (code.length !== 6) return;
+    let active = true;
+    supabase.from("schools").select("*").eq("school_code", code).single().then(({ data }) => {
+      if (active) setSchoolProfile(data || null);
+    });
+    return () => { active = false; };
   }, [form.school_code]);
 
   const handleChange = (e) => {
@@ -61,15 +64,6 @@ export default function StudentRegister() {
     }
 
     setForm({ ...form, [name]: value });
-  };
-
-  const readImageAsDataUrl = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error("Image read failed"));
-      reader.readAsDataURL(file);
-    });
   };
 
   const showPopup = (type, message) => {
@@ -94,19 +88,16 @@ export default function StudentRegister() {
     if (form.pin.length !== 4) return showPopup("error", "PIN must be 4 digits");
     if (form.school_code.length !== 6) return showPopup("error", "School code must be 6 digits");
 
-    const schoolRegistry = JSON.parse(localStorage.getItem("schoolRegistry") || "[]");
-    const matchingSchool = schoolRegistry.find(
-      (school) => school.school_code === form.school_code
-    );
+    const { data: matchingSchool } = await supabase
+      .from("schools").select("*").eq("school_code", form.school_code).single();
 
     if (!matchingSchool) {
       return showPopup("error", "School code not found");
     }
 
-    const studentRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-    const alreadyExists = studentRegistry.some(
-      (student) => student.school_code === form.school_code && student.number === form.phone
-    );
+    const { data: existingStudent } = await supabase.from("students").select("*")
+      .eq("school_code", form.school_code).eq("number", form.phone).single();
+    const alreadyExists = Boolean(existingStudent);
 
     if (alreadyExists) {
       return showPopup("error", "Student already registered for this school");
@@ -115,7 +106,7 @@ export default function StudentRegister() {
     setLoading(true);
 
     try {
-      const imageDataUrl = await readImageAsDataUrl(imageFile);
+      const imageDataUrl = await uploadMedia(imageFile);
 
       const payload = {
         id: createLocalId(),
@@ -137,12 +128,11 @@ export default function StudentRegister() {
       const { error } = await supabase.from("students").insert([payload]);
 
       if (error) {
-        studentRegistry.push(payload);
-        localStorage.setItem("studentRegistry", JSON.stringify(studentRegistry));
         setLoading(false);
-        return showPopup("error", "Registration saved locally");
+        return showPopup("error", "Registration failed. Please try again");
       }
 
+      const studentRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
       studentRegistry.push(payload);
       localStorage.setItem("studentRegistry", JSON.stringify(studentRegistry));
       setLoading(false);

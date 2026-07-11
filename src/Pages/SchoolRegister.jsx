@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { uploadMedia } from "../mediaClient";
 import "./StudentRegister.css";
 
 const syncSchoolRegistry = (school) => {
@@ -22,7 +23,7 @@ export default function SchoolRegister() {
     admin_pin: "",
     location: "",
   });
-  const [schoolLogo, setSchoolLogo] = useState("");
+  const [schoolLogo, setSchoolLogo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({
     show: false,
@@ -57,9 +58,7 @@ export default function SchoolRegister() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => setSchoolLogo(reader.result);
-    reader.readAsDataURL(file);
+    setSchoolLogo(file);
   };
 
   const handleSubmit = async (e) => {
@@ -77,10 +76,9 @@ export default function SchoolRegister() {
       return showPopup("error", "Admin pin must be 6 digits");
     }
 
-    const existingRegistry = JSON.parse(localStorage.getItem("schoolRegistry") || "[]");
-    const alreadyExists = existingRegistry.some(
-      (item) => item.school_code === form.school_code
-    );
+    const { data: existingSchool } = await supabase
+      .from("schools").select("*").eq("school_code", form.school_code).single();
+    const alreadyExists = Boolean(existingSchool);
 
     if (alreadyExists) {
       return showPopup("error", "This school code already exists");
@@ -88,13 +86,9 @@ export default function SchoolRegister() {
 
     setLoading(true);
 
-    const payload = {
-      ...form,
-      school_logo: schoolLogo,
-      created_at: new Date().toISOString(),
-    };
-
     try {
+      const uploadedLogo = schoolLogo ? await uploadMedia(schoolLogo) : "";
+      const payload = { ...form, school_logo: uploadedLogo, created_at: new Date().toISOString() };
       const { error } = await supabase.from("schools").insert([payload]);
 
       if (!error) {
@@ -119,22 +113,8 @@ export default function SchoolRegister() {
       console.error(err);
     }
 
-    syncSchoolRegistry(payload);
-    localStorage.setItem("schoolData", JSON.stringify(payload));
-    localStorage.setItem(
-      "adminData",
-      JSON.stringify({
-        email: payload.email,
-        admin_name: payload.admin_name,
-        school_name: payload.school_name,
-        school_code: payload.school_code,
-        admin_pin: payload.admin_pin,
-      })
-    );
-
     setLoading(false);
-    showPopup("success", "Your school registration is done successfully");
-    setTimeout(() => navigate("/SchoolLogin"), 1800);
+    showPopup("error", "Registration failed. Check the server and try again");
   };
 
   return (

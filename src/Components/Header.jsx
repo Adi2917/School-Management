@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./Header.css";
 
@@ -12,7 +12,7 @@ export default function Header() {
         <ArrowLeft size={22} />
       </button>
 
-      <span className="header-title">{schoolData.school_name || "School Portal"}</span>
+      <div className="header-brand"><span><BookOpen size={18}/></span><div><small>CONNECT YOUR SCHOOL</small><b>{schoolData.school_name || "School Portal"}</b></div></div>
 
       <div className="header-right" />
     </div>
