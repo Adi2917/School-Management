@@ -7,6 +7,7 @@ import "./theme.css";
 import "./premium.css";
 import "./final-polish.css";
 import "./scroll-fix.css";
+import "./result-final.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
