@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, BellRing, BookOpen, CalendarDays, FileChartColumn, GraduationCap, LogOut, ReceiptIndianRupee, Sparkles } from "lucide-react";
+import { ArrowRight, BellRing, BookOpen, CalendarDays, FileChartColumn, GraduationCap, LogOut, ReceiptIndianRupee, School, Sparkles } from "lucide-react";
 import "./StudentDashboard.css";
 import { clearSession } from "../session";
 
@@ -26,6 +26,7 @@ export default function StudentDashboard() {
   return (
     <div className="dashboard-container">
       <div className="student-welcome"><div><span><Sparkles/> STUDENT WORKSPACE</span><h1>Good to see you, {student.name?.split(" ")[0]}.</h1><p>Everything from your classroom, organized in one calm place.</p></div><div className="student-date"><CalendarDays/><span><small>TODAY</small><b>{new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</b></span></div></div>
+      <div className="student-school-banner"><div className="student-school-banner__logo">{student.school_logo ? <img src={student.school_logo} alt=""/> : <School/>}</div><div><small>MY SCHOOL</small><h2>{student.school_name || "My School"}</h2><p>Class {student.class}-{student.section} · Roll {student.roll}</p></div><span><GraduationCap/> Proud learner</span></div>
       <div className="dashboard-top">
         <div className="profile-section">
           <div className="profile-left">

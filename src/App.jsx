@@ -19,10 +19,11 @@ import AdminStudentResult from "./Pages/AdminStudentResult";
 import StudentResult from "./Pages/StudentResult";
 
 import MainLayout from "./Layout/MainLayout";
+import ScrollToTop from "./Components/ScrollToTop";
 
 function App() {
   return (
-    <Routes>
+    <><ScrollToTop/><Routes>
       {/* Home page – NO header */}
       <Route path="/" element={<Home />} />
       <Route path="/Home" element={<Home />} />
@@ -70,7 +71,7 @@ function App() {
         />
 
       </Route>
-    </Routes>
+    </Routes></>
   );
 }
 
