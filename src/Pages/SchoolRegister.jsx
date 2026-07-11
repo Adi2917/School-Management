@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
 import EducationPanel from "../Components/EducationPanel";
+import { saveSession } from "../session";
 import "./StudentRegister.css";
 
 const syncSchoolRegistry = (school) => {
@@ -95,6 +96,7 @@ export default function SchoolRegister() {
       if (!error) {
         syncSchoolRegistry(payload);
         localStorage.setItem("schoolData", JSON.stringify(payload));
+        saveSession("admin");
         localStorage.setItem(
           "adminData",
           JSON.stringify({

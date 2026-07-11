@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, BellRing, BookOpen, CalendarDays, FileChartColumn, GraduationCap, LogOut, ReceiptIndianRupee, Sparkles } from "lucide-react";
 import "./StudentDashboard.css";
+import { clearSession } from "../session";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function StudentDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("studentData");
+    clearSession("student");
     navigate("/Home");
   };
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
+import { saveSession } from "../session";
 
 export default function SchoolLogin() {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ export default function SchoolLogin() {
 
         localStorage.setItem("adminData", JSON.stringify(data));
         localStorage.setItem("schoolData", JSON.stringify(data));
+        saveSession("admin");
         setLoading(false);
         showPopup("success", "School login successful");
         setTimeout(() => navigate("/AdminDashboard"), 1000);
@@ -75,6 +77,7 @@ export default function SchoolLogin() {
 
       localStorage.setItem("adminData", JSON.stringify(match));
       localStorage.setItem("schoolData", JSON.stringify(match));
+      saveSession("admin");
       setLoading(false);
       showPopup("success", "School login successful");
       setTimeout(() => navigate("/AdminDashboard"), 1000);

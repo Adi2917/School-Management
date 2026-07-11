@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./AdminDashboard.css";
 import { BellRing, BookOpen, ChevronRight, GraduationCap, LayoutDashboard, LogOut, Search, ShieldCheck, Users } from "lucide-react";
+import { clearSession } from "../session";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("adminData");
     localStorage.removeItem("schoolData");
+    clearSession("admin");
     navigate("/Home");
   };
 

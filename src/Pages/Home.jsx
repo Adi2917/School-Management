@@ -1,9 +1,15 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getSessionDestination } from "../session";
 import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, GraduationCap, ShieldCheck, Sparkles, Users } from "lucide-react";
 import "./Home.css";
 
 export default function Home() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const destination = getSessionDestination();
+    if (destination) navigate(destination, { replace: true });
+  }, [navigate]);
   return <div className="landing-page">
     <nav className="landing-nav">
       <button className="brand" onClick={() => navigate("/")} aria-label="Connect Your School home">
