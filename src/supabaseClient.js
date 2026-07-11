@@ -20,8 +20,10 @@ class QueryBuilder {
       if (this.action === "update") { options.method = "PATCH"; options.body = JSON.stringify(this.payload); }
       if (this.action === "delete") options.method = "DELETE";
       const response = await fetch(`${API_URL}/${this.collection}?${params}`, options);
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.message || "Database request failed");
+      const raw = await response.text();
+      let body;
+      try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`API unavailable (${response.status}). Please try again.`); }
+      if (!response.ok) throw new Error(body.message || `Database request failed (${response.status})`);
       const data = this.one && Array.isArray(body.data) ? body.data[0] || null : body.data;
       return { data, error: null };
     } catch (error) { console.error("MongoDB API:", error.message); return { data: this.one ? null : [], error }; }
