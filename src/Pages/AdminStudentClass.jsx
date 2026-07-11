@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./AdminStudentClass.css";
+import { ArrowRight, BookOpen, GraduationCap, Search, UserRound, Users } from "lucide-react";
 
 export default function AdminStudentClass() {
   const { className } = useParams();
@@ -70,13 +71,9 @@ export default function AdminStudentClass() {
     <div className="class-wrapper">
 
       <div className="class-card">
+        <div className="class-hero"><div className="class-hero__icon"><BookOpen/></div><div><span>ACADEMIC DIRECTORY</span><h2 className="class-heading">Class {className}</h2><p>Manage sections and open individual student records.</p></div><div className="class-count"><Users/><span><b>{students.length}</b><small>Students</small></span></div></div>
 
-        {/* Heading */}
-        <h2 className="class-heading">
-          Class {className}
-        </h2>
-
-        {/* Section Filter */}
+        <div className="class-toolbar"><div><small>FILTER BY SECTION</small>
         <div className="section-filter">
           {["A", "B", "C"].map((sec) => (
             <button
@@ -90,33 +87,30 @@ export default function AdminStudentClass() {
             </button>
           ))}
         </div>
-
-        <hr className="divider" />
-
-        {/* Search */}
-        <input
+        </div><label className="class-search-wrap"><Search/><input
           type="text"
           placeholder="Search Student..."
           className="class-search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
+        /></label></div>
 
         {/* Student Grid */}
         <div className="student-grid">
           {filteredStudents.map((student) => (
-            <div
+            <button
               key={student.id}
               className="student-cell"
               onClick={() =>
                 navigate(`/AdminStudentDashboard/${student.id}`)
               }
             >
-              {student.name}
-            </div>
+              <img src={student.photo_url || "/brand-mark.svg"} alt=""/><span><small>ROLL {student.roll}</small><b>{student.name}</b><em>Section {student.section}</em></span><ArrowRight/>
+            </button>
           ))}
+          {filteredStudents.length === 0 && <div className="class-empty"><UserRound/><h3>No students found</h3><p>Try another section or search term.</p></div>}
         </div>
-
+        <div className="class-footer-note"><GraduationCap/> Showing records connected to this school only</div>
       </div>
 
     </div>

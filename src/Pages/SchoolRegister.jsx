@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
+import EducationPanel from "../Components/EducationPanel";
 import "./StudentRegister.css";
 
 const syncSchoolRegistry = (school) => {
@@ -119,6 +120,7 @@ export default function SchoolRegister() {
 
   return (
     <div className="register-container">
+      <EducationPanel mode="school" />
       {popup.show && (
         <div className="popup-overlay">
           <div className={`popup-box ${popup.type}`}>{popup.message}</div>

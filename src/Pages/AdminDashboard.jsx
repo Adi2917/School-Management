@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./AdminDashboard.css";
+import { BellRing, BookOpen, ChevronRight, GraduationCap, LayoutDashboard, LogOut, Search, ShieldCheck, Users } from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function AdminDashboard() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [schoolCode, setSchoolCode] = useState("");
+  const [allStudents, setAllStudents] = useState([]);
 
   const classes = [
     "Nursery","LKG","UKG",
@@ -30,6 +32,11 @@ export default function AdminDashboard() {
     setSchoolCode(activeSchool?.school_code || "");
   }, [navigate]);
 
+  useEffect(() => {
+    if (!schoolCode) return;
+    supabase.from("students").select("*").eq("school_code", schoolCode).then(({ data }) => setAllStudents(data || []));
+  }, [schoolCode]);
+
   // 🔥 Debounced realtime search
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -40,40 +47,18 @@ export default function AdminDashboard() {
 
       setLoading(true);
 
-      const studentRegistry = JSON.parse(
-        localStorage.getItem("studentRegistry") || "[]"
-      );
-
-      const localMatches = studentRegistry.filter(
+      const localMatches = allStudents.filter(
         (student) =>
-          student.school_code === schoolCode &&
           student.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
       setStudents(localMatches);
       setLoading(false);
 
-      if (localMatches.length === 0) {
-        (async () => {
-          try {
-            const { data, error } = await supabase
-              .from("students")
-              .select("*")
-              .eq("school_code", schoolCode)
-              .ilike("name", `%${searchTerm}%`);
-
-            if (!error && data) {
-              setStudents(data);
-            }
-          } catch {
-            setStudents([]);
-          }
-        })();
-      }
     }, 300);
 
     return () => clearTimeout(delay);
-  }, [searchTerm, schoolCode]);
+  }, [searchTerm, allStudents]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminData");
@@ -85,15 +70,27 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard-wrapper">
-      <div className="dashboard-card">
-
-        <h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1>
-        <img src={admin?.school_logo || "/brand-mark.svg"} alt="Connect Your School" className="school-logo" />
-        <p className="admin-sub">Hi {admin?.admin_name || "Admin"} Here</p>
+      <div className="admin-command">
+        <aside className="admin-command__rail">
+          <div className="rail-logo"><BookOpen/></div><b>School<br/>Console</b>
+          <nav><span className="active"><LayoutDashboard/> Overview</span><span><Users/> Students</span><span><BellRing/> Notices</span></nav>
+          <div className="rail-secure"><ShieldCheck/><small>Protected<br/>workspace</small></div>
+        </aside>
+        <section className="dashboard-card">
+        <div className="admin-hero">
+          <img src={admin?.school_logo || "/brand-mark.svg"} alt="Connect Your School" className="school-logo" />
+          <div><span className="admin-kicker">SCHOOL ADMINISTRATION</span><h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1><p className="admin-sub">Welcome back, {admin?.admin_name || "Administrator"}. Here is your school overview.</p></div>
+          <span className="school-code-chip">CODE · {schoolCode}</span>
+        </div>
+        <div className="admin-stats">
+          <article><span><Users/></span><div><b>{allStudents.length}</b><small>Total students</small></div></article>
+          <article><span><GraduationCap/></span><div><b>{new Set(allStudents.map(s => s.class)).size}</b><small>Active classes</small></div></article>
+          <article><span><BellRing/></span><div><b>Live</b><small>School updates</small></div></article>
+        </div>
 
         {/* Search */}
         <div className="input-block">
-          <input
+          <Search className="field-icon"/><input
             type="text"
             className="search"
             placeholder="Search Student..."
@@ -124,36 +121,12 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Class Select */}
-        <div className="input-block">
-          <select
-            onChange={(e) =>
-              navigate(`/AdminStudentClass/${e.target.value}`)
-            }
-          >
-            <option>Select Class</option>
-            {classes.map((cls) => (
-              <option key={cls} value={cls}>{cls}</option>
-            ))}
-          </select>
+        <div className="admin-section-title"><div><span>ACADEMIC DIRECTORY</span><h2>Browse classes</h2></div><small>Select a class to view students</small></div>
+        <div className="class-launcher">
+          {classes.map((cls) => <button key={cls} onClick={() => navigate(`/AdminStudentClass/${cls}`)}><span>{["Nursery","LKG","UKG"].includes(cls) ? cls : `Class ${cls}`}</span><ChevronRight/></button>)}
         </div>
-
-        {/* Upload */}
-        <button
-          className="primary-btn"
-          onClick={() => navigate("/AdminStudentNotification")}
-        >
-          Upload Notification
-        </button>
-
-        {/* Logout */}
-        <button
-          className="logout-btn"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
-
+        <div className="admin-actions"><button className="primary-btn" onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Create notification</button><button className="logout-btn" onClick={handleLogout}><LogOut/> Logout</button></div>
+        </section>
       </div>
     </div>
   );

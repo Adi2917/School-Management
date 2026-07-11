@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
+import EducationPanel from "../Components/EducationPanel";
 import "./StudentRegister.css";
 
 export default function StudentRegister() {
@@ -146,6 +147,7 @@ export default function StudentRegister() {
 
   return (
     <div className="register-container">
+      <EducationPanel mode="student" />
       {popup.show && (
         <div className="popup-overlay">
           <div className={`popup-box ${popup.type}`}>{popup.message}</div>

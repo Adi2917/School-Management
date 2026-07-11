@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./StudentLogin.css";
+import EducationPanel from "../Components/EducationPanel";
 
 export default function StudentLogin() {
   const navigate = useNavigate();
@@ -86,6 +87,7 @@ export default function StudentLogin() {
 
   return (
     <div className="login-container">
+      <EducationPanel mode="student" />
       {popup.show && (
         <div className="popup-overlay">
           <div className={`popup-box ${popup.type}`}>
