@@ -47,7 +47,9 @@ export default async function handler(request) {
       return new Response(Buffer.concat(chunks), { headers: { "Content-Type": files[0].metadata?.contentType || "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable" } });
     }
     const collection = route[0]; if (!allowed.has(collection)) return json({ message: "Unknown API route" }, 404);
-    const Model = modelFor(collection); const filter = Object.fromEntries([...url.searchParams].filter(([key]) => key !== "sort"));
+    const Model = modelFor(collection); const rawFilter = Object.fromEntries([...url.searchParams].filter(([key]) => key !== "sort"));
+    let filter = rawFilter;
+    if (rawFilter.id && mongoose.Types.ObjectId.isValid(rawFilter.id)) { const { id, ...rest } = rawFilter; filter = { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; }
     if (request.method === "GET") { let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } return json({ data: (await query.lean()).map(normalize) }); }
     if (request.method === "POST") {
       const body = await request.json(); const items = Array.isArray(body) ? body : [body]; const saved = [];

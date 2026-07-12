@@ -17,7 +17,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 *
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
 const modelFor = (name) => mongoose.models[name] || mongoose.model(name, schema, name);
 const normalize = (doc) => { const value = doc?.toObject ? doc.toObject() : doc; const { _id, ...rest } = value; return { id: rest.id || _id?.toString(), ...rest }; };
-const filterFrom = (params) => Object.fromEntries(Object.entries(params).filter(([key]) => key !== "sort"));
+const filterFrom = (params) => { const raw = Object.fromEntries(Object.entries(params).filter(([key]) => key !== "sort")); if (raw.id && mongoose.Types.ObjectId.isValid(raw.id)) { const { id, ...rest } = raw; return { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; } return raw; };
 const guard = (req, res, next) => allowed.has(req.params.collection) ? next() : res.status(400).json({ message: "Unknown collection" });
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" }));

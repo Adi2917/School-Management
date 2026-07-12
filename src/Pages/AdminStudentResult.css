@@ -176,6 +176,8 @@ justify-content:center;
 
 align-items:center;
 
+z-index:10000;
+
 }
 
 .modal{
@@ -225,3 +227,7 @@ color:white;
 border-radius:6px;
 
 }
+
+.saved-exams{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.saved-exams>span{display:flex;border:1px solid #dfcba8;border-radius:10px;overflow:hidden;background:#fff8ea}.saved-exams>span.active{border-color:#b77813;background:#fcebc6}.saved-exams button{border:0;background:transparent;padding:8px 10px;cursor:pointer}.saved-exams .exam-delete{color:#a32d20;border-left:1px solid #dfcba8;font-size:18px}.result-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.delete-result-btn{margin-top:10px;width:100%;padding:12px;border:1px solid #b84131;border-radius:8px;background:#fff1ee;color:#9b2c20;font-weight:700;cursor:pointer}
+
+@media(max-width:650px){.result-actions{grid-template-columns:1fr}.admin-result-container{margin:16px;padding:18px}.saved-exams{justify-content:center}}
