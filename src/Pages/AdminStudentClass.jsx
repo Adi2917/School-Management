@@ -13,6 +13,7 @@ export default function AdminStudentClass() {
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [section, setSection] = useState("");
   const [search, setSearch] = useState("");
+  const openStudent = (student) => { localStorage.setItem("selectedStudent", JSON.stringify(student)); navigate(`/AdminStudentDashboard/${student.id}`); };
 
   useEffect(() => {
     const schoolData = JSON.parse(localStorage.getItem("schoolData") || localStorage.getItem("adminData") || "{}");
@@ -101,9 +102,7 @@ export default function AdminStudentClass() {
             <button
               key={student.id}
               className="student-cell"
-              onClick={() =>
-                navigate(`/AdminStudentDashboard/${student.id}`)
-              }
+              onClick={() => openStudent(student)}
             >
               <img src={student.photo_url || "/brand-mark.svg"} alt=""/><span><small>ROLL {student.roll}</small><b>{student.name}</b><em>Section {student.section}</em></span><ArrowRight/>
             </button>

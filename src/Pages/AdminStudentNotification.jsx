@@ -4,6 +4,8 @@ import { uploadMedia } from "../mediaClient";
 import "./AdminStudentNotification.css";
 
 export default function AdminStudentNotification() {
+  const activeSchool = JSON.parse(localStorage.getItem("schoolData") || localStorage.getItem("adminData") || "{}");
+  const schoolCode = activeSchool.school_code || "";
   const [tittle, setTittle] = useState("");
   const [message, setMessage] = useState("");
   const [media, setMedia] = useState(null);
@@ -17,6 +19,7 @@ export default function AdminStudentNotification() {
     const { data } = await supabase
       .from("notifications")
       .select("*")
+      .eq("school_code", schoolCode)
       .order("created_at", { ascending: false });
 
     if (data) setNotifications(data);
@@ -40,7 +43,7 @@ export default function AdminStudentNotification() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [schoolCode]);
 
   // ================= UPLOAD =================
   const handleUpload = async () => {
@@ -75,7 +78,9 @@ export default function AdminStudentNotification() {
         message,
         image_url,
         file_url,
+        media_type: mediaType,
         student_id: null,
+        school_code: schoolCode,
         created_at: deviceTime,
       },
     ]);
@@ -98,6 +103,7 @@ export default function AdminStudentNotification() {
   // ================= DELETE =================
   const handleDelete = async (id) => {
     await supabase.from("notifications").delete().eq("id", id);
+    fetchNotifications();
   };
 
   return (

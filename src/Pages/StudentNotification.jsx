@@ -3,24 +3,16 @@ import { supabase } from "../supabaseClient";
 import "./StudentNotification.css";
 
 export default function StudentNotification() {
-
+  const student = JSON.parse(localStorage.getItem("studentData") || "{}");
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error) {
-      setNotifications(data);
-    }
-  };
+    let active = true;
+    supabase.from("notifications").select("*").eq("school_code", student.school_code || "__missing_school__").order("created_at", { ascending: false }).then(({ data, error }) => {
+      if (active && !error) setNotifications(data || []);
+    });
+    return () => { active = false; };
+  }, [student.school_code]);
 
   return (
     <div className="student-overlay">
@@ -37,7 +29,7 @@ export default function StudentNotification() {
             <h4>{item.tittle || item.title}</h4>
             <p>{item.message}</p>
 
-            {item.image_url && item.image_url.includes(".mp4") ? (
+            {item.image_url && item.media_type === "video" ? (
               <video controls>
                 <source src={item.image_url} type="video/mp4" />
               </video>

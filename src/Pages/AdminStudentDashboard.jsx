@@ -7,17 +7,17 @@ export default function AdminStudentDashboard() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
-
-  useEffect(() => {
-    fetchStudent();
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchStudent = async () => {
     const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-    const localStudent = localRegistry.find((item) => item.id === id);
+    const selectedStudent = JSON.parse(localStorage.getItem("selectedStudent") || "{}");
+    const localStudent = selectedStudent.id === id ? selectedStudent : localRegistry.find((item) => item.id === id);
 
     if (localStudent) {
       setStudent(localStudent);
+      setLoading(false);
       return;
     }
 
@@ -28,13 +28,21 @@ export default function AdminStudentDashboard() {
         .eq("id", id)
         .single();
 
-      if (!error) setStudent(data);
+      if (!error && data) setStudent(data);
+      else setErrorMessage("Student record could not be loaded");
     } catch {
-      setStudent(null);
+      setErrorMessage("Unable to connect. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!student) return <div className="loading">Loading...</div>;
+  useEffect(() => {
+    fetchStudent();
+  }, [id]);
+
+  if (loading) return <div className="loading">Loading student...</div>;
+  if (!student) return <div className="loading">{errorMessage || "Student not found"}<button onClick={() => navigate(-1)}>Go Back</button></div>;
 
   return (
     <div className="student-dashboard-wrapper">

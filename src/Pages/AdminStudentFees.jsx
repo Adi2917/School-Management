@@ -17,7 +17,9 @@ export default function AdminStudentFees() {
 
   useEffect(() => {
     fetchFees();
-    supabase.from("students").select("*").eq("id", id).single().then(({ data }) => setStudent(data));
+    const selected = JSON.parse(localStorage.getItem("selectedStudent") || "{}");
+    if (selected.id === id) setStudent(selected);
+    else supabase.from("students").select("*").eq("id", id).single().then(({ data }) => setStudent(data));
   }, [id]);
 
   const fetchFees = async () => {
@@ -49,7 +51,8 @@ export default function AdminStudentFees() {
   const updateStatus = async (feeId, newStatus) => {
     const today = new Date().toISOString();
 
-    await supabase
+    setFees(current => current.map(fee => fee.id === feeId ? { ...fee, status: newStatus, paid_date: newStatus === "Paid" ? today : null } : fee));
+    const { error } = await supabase
       .from("fees")
       .update({
         status: newStatus,
@@ -57,7 +60,7 @@ export default function AdminStudentFees() {
       })
       .eq("id", feeId);
 
-    fetchFees();
+    if (error) { alert("Fee status update failed. Please try again."); fetchFees(); }
   };
 
   return (

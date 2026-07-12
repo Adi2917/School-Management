@@ -68,6 +68,7 @@ export default function AdminDashboard() {
     clearSession("admin");
     navigate("/Home");
   };
+  const openStudent = (student) => { localStorage.setItem("selectedStudent", JSON.stringify(student)); navigate(`/AdminStudentDashboard/${student.id}`); };
 
   if (!admin) return null;
 
@@ -113,9 +114,7 @@ export default function AdminDashboard() {
                 <div
                   key={student.id}
                   className="search-item"
-                  onClick={() =>
-                    navigate(`/AdminStudentDashboard/${student.id}`)
-                  }
+                  onClick={() => openStudent(student)}
                 >
                   {student.name} • {student.class}-{student.section}
                 </div>

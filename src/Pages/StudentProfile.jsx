@@ -18,6 +18,11 @@ export default function StudentProfile() {
   useEffect(() => {
     const fetchStudent = async () => {
       try {
+        const activeStudent = JSON.parse(localStorage.getItem("studentData") || "{}");
+        if (activeStudent.id === id) {
+          setStudent(activeStudent);
+          return;
+        }
         const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
         const localStudent = localRegistry.find((item) => item.id === id);
 
