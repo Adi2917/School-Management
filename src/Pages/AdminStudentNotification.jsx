@@ -96,6 +96,7 @@ export default function AdminStudentNotification() {
       <div className="editor-heading"><div><small className="section-kicker">EDIT NOTICE</small><h3>Update notification</h3></div><button onClick={() => setEditing(null)}>×</button></div>
       <label>Title<input value={editing.tittle || ""} onChange={e => setEditing({ ...editing, tittle: e.target.value })}/></label>
       <label>Message<textarea value={editing.message || ""} onChange={e => setEditing({ ...editing, message: e.target.value })}/></label>
+      {(editing.image_url || editing.file_url) && <div className="current-attachment"><small className="section-kicker">CURRENT ATTACHMENT</small>{editing.media_type === "video" && editing.image_url ? <video controls src={editing.image_url}/> : editing.image_url ? <img src={editing.image_url} alt="Current notification attachment"/> : <a href={editing.file_url} target="_blank" rel="noreferrer">Open current document</a>}</div>}
       <div className="media-options">{mediaInput("image/*", "image", "Replace image", setEditFile, setEditMediaType)}{mediaInput("video/*", "video", "Replace video", setEditFile, setEditMediaType)}{mediaInput(".pdf,.doc,.docx", "file", "Replace file", setEditFile, setEditMediaType)}</div>
       {editFile && <p className="preview-name">New attachment: {editFile.name}</p>}
       <div className="editor-actions"><button className="danger-button" onClick={() => handleDelete(editing)}>Delete</button><button onClick={saveEdit} disabled={loading}>{loading ? "Saving..." : "Save changes"}</button></div>
