@@ -1,75 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import "./StudentFees.css";
 import { CalendarCheck, CircleDollarSign, Clock3, ReceiptIndianRupee } from "lucide-react";
+import "./StudentFees.css";
 
-const monthsOrder = [
-  "March","April","May","June","July","August",
-  "September","October","November","December",
-  "January","February"
-];
-
-export default function StudentFees() {
-  const { id } = useParams();
-  const [fees, setFees] = useState([]);
-
-  useEffect(() => {
-    fetchFees();
-  }, [id]);
-
-  const fetchFees = async () => {
-    const { data } = await supabase
-      .from("fees")
-      .select("*")
-      .eq("student_id", id);
-
-    if (data) {
-      const sorted = monthsOrder.map(month =>
-        data.find(f => f.month === month)
-      ).filter(Boolean);
-
-      setFees(sorted);
-    }
-  };
-
-  return (
-    <div className="student-wrapper">
-      <div className="student-card">
-
-        <div className="fees-hero"><span><ReceiptIndianRupee/></span><div><small>MY ACCOUNTS</small><h2>My Fees Status</h2><p>Track every monthly payment in one place.</p></div></div>
-        <div className="fees-summary"><div><CalendarCheck/><span><b>{fees.filter(f=>f.status === "Paid").length}</b><small>Paid months</small></span></div><div><Clock3/><span><b>{fees.filter(f=>f.status !== "Paid").length}</b><small>Pending months</small></span></div><div><CircleDollarSign/><span><b>{fees.length}</b><small>Academic cycle</small></span></div></div>
-        <div className="fees-grid">
-
-        {fees.map((fee) => (
-          <div key={fee.id} className="student-row">
-
-            <div className="month-name">
-              {fee.month}
-            </div>
-
-            <div className="right-section">
-
-              <span
-                className={`status-dot ${
-                  fee.status === "Paid" ? "green" : "red"
-                }`}
-              ></span>
-
-              <span>{fee.status}</span>
-
-              {fee.status === "Paid" && fee.paid_date && (
-                <span className="paid-date">
-                  {new Date(fee.paid_date).toLocaleDateString()}
-                </span>
-              )}
-
-            </div>
-
-          </div>
-        ))}</div>
-
-      </div>
-    </div>
-  );
+const months = ["March","April","May","June","July","August","September","October","November","December","January","February"];
+export default function StudentFees(){
+  const {id}=useParams(); const [fees,setFees]=useState(months.map(month=>({month,status:"Pending",placeholder:true}))); const [student,setStudent]=useState({}); const [school,setSchool]=useState({}); const [loading,setLoading]=useState(true);
+  useEffect(()=>{(async()=>{setLoading(true);const [{data:studentData},{data:feeData}]=await Promise.all([supabase.from("students").select("*").eq("id",id).single(),supabase.from("fees").select("*").eq("student_id",id)]);setStudent(studentData||{});if(studentData){const{data}=await supabase.from("schools").select("*").eq("school_code",studentData.school_code).single();setSchool(data||{});}setFees(months.map(month=>(feeData||[]).find(fee=>fee.month===month)||{month,status:"Pending",placeholder:true}));setLoading(false);})()},[id]);
+  const paid=useMemo(()=>fees.filter(fee=>!fee.placeholder&&fee.status==="Paid").length,[fees]);
+  return <main className="fees-page-shell"><header className="finance-brand"><img src={school.school_logo||student.school_logo||"/brand-mark.svg"} alt=""/><div><small>MY SCHOOL · CODE {student.school_code||"—"}</small><h1>{school.school_name||student.school_name||"School fees"}</h1><p>{student.name||"Student"} · Class {student.class||"—"}-{student.section||"—"} · Roll {student.roll||"—"}</p></div><ReceiptIndianRupee/></header><section className="fees-premium-card"><div className="fees-title"><div><small>PAYMENT OVERVIEW</small><h2>My fee status</h2></div>{loading&&<span className="sync-badge">Loading…</span>}</div><div className="fees-summary premium-fee-summary"><div><CalendarCheck/><span><b>{paid}</b><small>Paid months</small></span></div><div><Clock3/><span><b>{12-paid}</b><small>Pending months</small></span></div><div><CircleDollarSign/><span><b>12</b><small>Academic cycle</small></span></div></div><div className="premium-fee-grid">{fees.map(fee=><article key={fee.month} className={`${fee.status==="Paid"?"is-paid":"is-pending"} ${fee.placeholder?"is-loading":""}`}><div className="fee-month"><small>MONTH</small><b>{fee.month}</b></div><div className="fee-state"><span></span><b>{fee.status}</b></div><div className="fee-date"><small>PAYMENT DATE</small><b>{fee.paid_date?new Date(fee.paid_date).toLocaleDateString():"Not paid"}</b></div></article>)}</div></section></main>;
 }

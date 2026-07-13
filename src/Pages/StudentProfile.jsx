@@ -1,179 +1,22 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { FaEdit } from "react-icons/fa";
+import { Edit3, GraduationCap, MapPin, Phone, School, ShieldCheck, UserRound, X } from "lucide-react";
 import "./StudentProfile.css";
 
-export default function StudentProfile() {
-  // ✅ FIXED PARAM NAME
-  const { id } = useParams();
-  const navigate = useNavigate();
+const fields = [
+  { label:"Student name", key:"name", icon:UserRound }, { label:"Father's name", key:"father_name", icon:UserRound },
+  { label:"Class", key:"class", icon:GraduationCap }, { label:"Section", key:"section", icon:GraduationCap },
+  { label:"Roll number", key:"roll", icon:ShieldCheck }, { label:"Contact number", key:"number", icon:Phone },
+  { label:"Address", key:"address", icon:MapPin },
+];
 
-  const [student, setStudent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editField, setEditField] = useState(null);
-  const [newValue, setNewValue] = useState("");
-
-  // ================= FETCH STUDENT =================
-  useEffect(() => {
-    const fetchStudent = async () => {
-      try {
-        const activeStudent = JSON.parse(localStorage.getItem("studentData") || "{}");
-        if (activeStudent.id === id) {
-          setStudent(activeStudent);
-          return;
-        }
-        const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-        const localStudent = localRegistry.find((item) => item.id === id);
-
-        if (localStudent) {
-          setStudent(localStudent);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("students")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error) throw error;
-
-        setStudent(data);
-      } catch (err) {
-        console.error("Error fetching student:", err);
-
-        const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-        const localStudent = localRegistry.find((item) => item.id === id);
-
-        if (localStudent) {
-          setStudent(localStudent);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchStudent();
-    }
-  }, [id]);
-
-  // ================= EDIT CLICK =================
-  const handleEditClick = (field) => {
-    setEditField(field);
-    setNewValue(student[field]);
-  };
-
-  // ================= SAVE UPDATE =================
-  const handleSave = async () => {
-    try {
-      const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-      const updatedStudent = { ...student, [editField]: newValue };
-      const updatedRegistry = localRegistry.map((item) =>
-        item.id === id ? updatedStudent : item
-      );
-
-      localStorage.setItem("studentRegistry", JSON.stringify(updatedRegistry));
-      localStorage.setItem("studentData", JSON.stringify(updatedStudent));
-
-      const { data, error } = await supabase
-        .from("students")
-        .update({ [editField]: newValue })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setStudent(data || updatedStudent);
-      setEditField(null);
-      setNewValue("");
-    } catch (err) {
-      console.error("Error updating student:", err);
-
-      const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
-      const updatedStudent = { ...student, [editField]: newValue };
-      const updatedRegistry = localRegistry.map((item) =>
-        item.id === id ? updatedStudent : item
-      );
-
-      localStorage.setItem("studentRegistry", JSON.stringify(updatedRegistry));
-      localStorage.setItem("studentData", JSON.stringify(updatedStudent));
-      setStudent(updatedStudent);
-      setEditField(null);
-      setNewValue("");
-    }
-  };
-
-  // ================= LOADING =================
-  if (loading) return <div className="loading">Loading...</div>;
-  if (!student) return <div className="loading">Student not found!</div>;
-
-  const fields = [
-    { label: "Name", key: "name" },
-    { label: "Father's Name", key: "father_name" },
-    { label: "Class", key: "class" },
-    { label: "Section", key: "section" },
-    { label: "Roll No", key: "roll" },
-    { label: "Contact Number", key: "number" },
-    { label: "Address", key: "address" },
-  ];
-
-  return (
-    <div className="profile-modal">
-      {/* Backdrop */}
-      <div
-        className="profile-backdrop"
-        onClick={() => navigate(-1)}
-      ></div>
-
-      <div className="profile-card">
-        <button
-          className="close-btn"
-          onClick={() => navigate(-1)}
-        >
-          ×
-        </button>
-
-        {/* Photo */}
-        <div className="profile-photo">
-          <img src={student.photo_url || "/brand-mark.svg"} alt={student.name} />
-        </div>
-
-        {/* Detail rows */}
-        {fields.map((field) => (
-          <div className="profile-row" key={field.key}>
-            <span className="label">{field.label}:</span>
-
-            {editField === field.key ? (
-              <>
-                <input
-                  type="text"
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                />
-                <button
-                  className="save-btn"
-                  onClick={handleSave}
-                >
-                  Save
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="value">
-                  {student[field.key]}
-                </span>
-                <FaEdit
-                  className="edit-icon"
-                  onClick={() => handleEditClick(field.key)}
-                />
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+export default function StudentProfile(){
+  const{id}=useParams();const navigate=useNavigate();const[student,setStudent]=useState(null);const[school,setSchool]=useState({});const[loading,setLoading]=useState(true);const[edit,setEdit]=useState(null);const[value,setValue]=useState("");const[saving,setSaving]=useState(false);
+  useEffect(()=>{(async()=>{const cached=JSON.parse(localStorage.getItem("studentData")||"{}");let record=cached.id===id?cached:null;if(!record){const{data}=await supabase.from("students").select("*").eq("id",id).single();record=data;}setStudent(record);if(record){const{data}=await supabase.from("schools").select("*").eq("school_code",record.school_code).single();setSchool(data||{});}setLoading(false);})()},[id]);
+  const openEdit=field=>{setEdit(field);setValue(String(student[field.key]??""));};
+  const save=async()=>{const clean=value.trim();if(!clean)return alert("Value cannot be empty");if(edit.key==="number"&&!/^\d{10}$/.test(clean))return alert("Contact number must contain exactly 10 digits");if(edit.key==="section"&&!/^[A-Za-z]$/.test(clean))return alert("Enter a valid one-letter section");setSaving(true);const{data,error}=await supabase.from("students").update({[edit.key]:clean}).eq("id",id).eq("school_code",student.school_code).select().single();setSaving(false);if(error)return alert(error.message||"Profile update failed");const updated=data||{...student,[edit.key]:clean};setStudent(updated);const active=JSON.parse(localStorage.getItem("studentData")||"{}");if(active.id===id)localStorage.setItem("studentData",JSON.stringify(updated));const registry=JSON.parse(localStorage.getItem("studentRegistry")||"[]");localStorage.setItem("studentRegistry",JSON.stringify(registry.map(item=>item.id===id?updated:item)));setEdit(null);};
+  if(loading)return <div className="workspace-loading"><span></span><b>Loading student profile…</b></div>;if(!student)return <div className="workspace-error">Student record not found.</div>;
+  const role=localStorage.getItem("activeSchoolSession");const activeAdmin=JSON.parse(localStorage.getItem("schoolData")||localStorage.getItem("adminData")||"{}");const activeStudent=JSON.parse(localStorage.getItem("studentData")||"{}");if(role==="admin"&&activeAdmin.school_code&&activeAdmin.school_code!==student.school_code)return <div className="workspace-error">This student does not belong to your school.</div>;if(role==="student"&&activeStudent.id&&activeStudent.id!==id)return <div className="workspace-error">You cannot open another student's profile.</div>;
+  return <main className="profile-page-shell"><section className="profile-premium-card"><button className="profile-close" onClick={()=>navigate(-1)}><X/></button><header className="profile-school"><img src={school.school_logo||student.school_logo||"/brand-mark.svg"} alt=""/><div><small>REGISTERED SCHOOL · CODE {student.school_code}</small><h2>{school.school_name||student.school_name}</h2></div><School/></header><div className="profile-identity"><img src={student.photo_url||"/brand-mark.svg"} alt={student.name}/><div><small>STUDENT PROFILE</small><h1>{student.name}</h1><p>Class {student.class}-{student.section} · Roll {student.roll}</p></div></div><div className="profile-details-grid">{fields.map(field=>{const Icon=field.icon;return <article key={field.key}><span><Icon/></span><div><small>{field.label}</small><b title={student[field.key]}>{student[field.key]||"—"}</b></div><button onClick={()=>openEdit(field)} aria-label={`Edit ${field.label}`}><Edit3/></button></article>})}</div></section>{edit&&<div className="functional-modal" onMouseDown={()=>setEdit(null)}><div onMouseDown={e=>e.stopPropagation()}><small>EDIT PROFILE</small><h2>{edit.label}</h2>{edit.key==="class"?<select value={value} onChange={e=>setValue(e.target.value)}><option>Nursery</option><option>LKG</option><option>UKG</option>{[...Array(10)].map((_,index)=><option key={index}>{index+1}</option>)}</select>:edit.key==="section"?<select value={value.toUpperCase()} onChange={e=>setValue(e.target.value)}><option>A</option><option>B</option><option>C</option></select>:<input autoFocus type={edit.key==="number"?"tel":"text"} maxLength={edit.key==="number"?10:120} value={value} onChange={e=>{const next=edit.key==="number"?e.target.value.replace(/\D/g,""):e.target.value;setValue(next)}} onKeyDown={e=>e.key==="Enter"&&save()}/>}<div><button onClick={()=>setEdit(null)}>Cancel</button><button disabled={saving} onClick={save}>{saving?"Saving…":"Save changes"}</button></div></div></div>}</main>;
 }

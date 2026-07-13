@@ -53,6 +53,10 @@ export default async function handler(request) {
     if (request.method === "GET") { let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } return json({ data: (await query.lean()).map(normalize) }); }
     if (request.method === "POST") {
       const body = await request.json(); const items = Array.isArray(body) ? body : [body]; const saved = [];
+      if (collection === "fees" && items.length > 1) {
+        await Model.bulkWrite(items.map(item => ({ updateOne: { filter: { student_id: item.student_id, month: item.month }, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } })), { ordered: false });
+        return json({ data: (await Model.find({ student_id: items[0].student_id }).lean()).map(normalize) }, 201);
+      }
       for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } saved.push(normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject())); }
       return json({ data: saved }, 201);
     }

@@ -78,15 +78,16 @@ export default function SchoolRegister() {
       return showPopup("error", "Admin pin must be 6 digits");
     }
 
+    setLoading(true);
+
     const { data: existingSchool } = await supabase
       .from("schools").select("*").eq("school_code", form.school_code).single();
     const alreadyExists = Boolean(existingSchool);
 
     if (alreadyExists) {
+      setLoading(false);
       return showPopup("error", "This school code already exists");
     }
-
-    setLoading(true);
 
     try {
       const uploadedLogo = schoolLogo ? await uploadMedia(schoolLogo) : "";

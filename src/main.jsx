@@ -9,6 +9,7 @@ import "./final-polish.css";
 import "./scroll-fix.css";
 import "./result-final.css";
 import "./bugfix.css";
+import "./functional-premium.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

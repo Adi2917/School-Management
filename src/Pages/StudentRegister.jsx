@@ -89,22 +89,23 @@ export default function StudentRegister() {
     if (form.pin.length !== 4) return showPopup("error", "PIN must be 4 digits");
     if (form.school_code.length !== 6) return showPopup("error", "School code must be 6 digits");
 
-    const { data: matchingSchool } = await supabase
-      .from("schools").select("*").eq("school_code", form.school_code).single();
+    setLoading(true);
+
+    const [{ data: matchingSchool }, { data: existingStudent }] = await Promise.all([
+      supabase.from("schools").select("*").eq("school_code", form.school_code).single(),
+      supabase.from("students").select("*").eq("school_code", form.school_code).eq("number", form.phone).single(),
+    ]);
 
     if (!matchingSchool) {
+      setLoading(false);
       return showPopup("error", "School code not found");
     }
-
-    const { data: existingStudent } = await supabase.from("students").select("*")
-      .eq("school_code", form.school_code).eq("number", form.phone).single();
     const alreadyExists = Boolean(existingStudent);
 
     if (alreadyExists) {
+      setLoading(false);
       return showPopup("error", "Student already registered for this school");
     }
-
-    setLoading(true);
 
     try {
       const imageDataUrl = await uploadMedia(imageFile);

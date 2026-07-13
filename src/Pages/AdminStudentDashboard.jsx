@@ -11,9 +11,10 @@ export default function AdminStudentDashboard() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const fetchStudent = async () => {
+    const activeSchool = JSON.parse(localStorage.getItem("schoolData") || localStorage.getItem("adminData") || "{}");
     const localRegistry = JSON.parse(localStorage.getItem("studentRegistry") || "[]");
     const selectedStudent = JSON.parse(localStorage.getItem("selectedStudent") || "{}");
-    const localStudent = selectedStudent.id === id ? selectedStudent : localRegistry.find((item) => item.id === id);
+    const localStudent = selectedStudent.id === id && selectedStudent.school_code === activeSchool.school_code ? selectedStudent : localRegistry.find((item) => item.id === id && item.school_code === activeSchool.school_code);
 
     if (localStudent) {
       setStudent(localStudent);
@@ -26,6 +27,7 @@ export default function AdminStudentDashboard() {
         .from("students")
         .select("*")
         .eq("id", id)
+        .eq("school_code", activeSchool.school_code)
         .single();
 
       if (!error && data) setStudent(data);
