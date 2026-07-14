@@ -43,10 +43,13 @@ export default function StudentDashboard() {
             <div className="student-meta"><span><small>CLASS</small><b>{student.class} - {student.section}</b></span><span><small>ROLL NUMBER</small><b>{student.roll}</b></span><span><small>SCHOOL</small><b>{student.school_name || "My School"}</b></span></div>
 
             <button
+              type="button"
               className="detail-btn"
-              onClick={() =>
-                navigate(`/StudentProfile/${student.id}`) // ✅ pass UUID
-              }
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                navigate(`/StudentProfile/${student.id}`);
+              }}
             >
               View profile <ArrowRight/>
             </button>
