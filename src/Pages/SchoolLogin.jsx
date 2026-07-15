@@ -36,11 +36,14 @@ export default function SchoolLogin() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    const next = name === "school_code" || name === "admin_pin" ? value.replace(/\D/g, "").slice(0, 6) : value;
+    setForm({ ...form, [name]: next });
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!/^\d{6}$/.test(form.school_code)) return showPopup("error", "School code must contain exactly 6 digits");
+    if (!/^\d{6}$/.test(form.admin_pin)) return showPopup("error", "Admin PIN must contain exactly 6 digits");
     setLoading(true);
 
     try {
@@ -112,6 +115,8 @@ export default function SchoolLogin() {
           <input
             type="text"
             name="school_code"
+            inputMode="numeric"
+            maxLength="6"
             placeholder="School Code"
             value={form.school_code}
             onChange={handleChange}
@@ -120,7 +125,9 @@ export default function SchoolLogin() {
           <input
             type="password"
             name="admin_pin"
-            placeholder="Admin Pin"
+            inputMode="numeric"
+            maxLength="6"
+            placeholder="6 Digit Admin PIN"
             value={form.admin_pin}
             onChange={handleChange}
             required

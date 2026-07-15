@@ -106,8 +106,10 @@ export default function StudentLogin() {
           <input
             type="text"
             placeholder="Enter School Code"
+            inputMode="numeric"
+            maxLength="6"
             value={schoolCode}
-            onChange={(e) => setSchoolCode(e.target.value)}
+            onChange={(e) => setSchoolCode(e.target.value.replace(/\D/g, ""))}
             required
           />
 

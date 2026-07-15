@@ -18,12 +18,26 @@ const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versio
 const modelFor = (name) => mongoose.models[name] || mongoose.model(name, schema, name);
 const normalize = (doc) => { const value = doc?.toObject ? doc.toObject() : doc; const { _id, ...rest } = value; return { id: rest.id || _id?.toString(), ...rest }; };
 const filterFrom = (params) => { const raw = Object.fromEntries(Object.entries(params).filter(([key]) => key !== "sort")); if (raw.id && mongoose.Types.ObjectId.isValid(raw.id)) { const { id, ...rest } = raw; return { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; } return raw; };
-const guard = (req, res, next) => allowed.has(req.params.collection) ? next() : res.status(400).json({ message: "Unknown collection" });
+const guard = (req, res, next) => {
+  if (!allowed.has(req.params.collection)) return res.status(400).json({ message: "Unknown collection" });
+  if (req.method === "POST" || req.method === "PATCH") {
+    const items = Array.isArray(req.body) ? req.body : [req.body];
+    const validationError = items.map(item => validateRecord(req.params.collection, item)).find(Boolean);
+    if (validationError) return res.status(400).json({ message: validationError });
+  }
+  next();
+};
+const validateRecord = (collection, item) => {
+  if (collection === "schools" && item.admin_pin !== undefined && !/^\d{6}$/.test(String(item.admin_pin))) return "Admin PIN must contain exactly 6 digits";
+  if (collection === "students" && item.pin !== undefined && !/^\d{4}$/.test(String(item.pin))) return "Student PIN must contain exactly 4 digits";
+  return "";
+};
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" }));
 app.post("/api/uploads", upload.single("file"), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: "Choose a file" });
+    if (!["image/jpeg", "image/png", "image/webp", "video/mp4", "application/pdf"].includes(req.file.mimetype)) return res.status(415).json({ message: "Only JPG, PNG, WebP, MP4 or PDF files are allowed" });
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "media" });
     const stream = bucket.openUploadStream(`${Date.now()}-${req.file.originalname}`, { metadata: { contentType: req.file.mimetype } });
     stream.end(req.file.buffer);

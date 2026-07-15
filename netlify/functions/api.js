@@ -22,6 +22,11 @@ const uniqueFilter = (collection, item) => {
   if (collection === "exam_types") return { name: item.name, school_code: item.school_code };
   return null;
 };
+const validateRecord = (collection, item) => {
+  if (collection === "schools" && item.admin_pin !== undefined && !/^\d{6}$/.test(String(item.admin_pin))) return "Admin PIN must contain exactly 6 digits";
+  if (collection === "students" && item.pin !== undefined && !/^\d{4}$/.test(String(item.pin))) return "Student PIN must contain exactly 4 digits";
+  return "";
+};
 
 export default async function handler(request) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS" } });
@@ -34,6 +39,8 @@ export default async function handler(request) {
       const form = await request.formData(); const file = form.get("file");
       if (!file || typeof file.arrayBuffer !== "function") return json({ message: "Choose a file" }, 400);
       if (file.size > 5 * 1024 * 1024) return json({ message: "File must be smaller than 5 MB" }, 413);
+      const accepted = new Set(["image/jpeg", "image/png", "image/webp", "video/mp4", "application/pdf"]);
+      if (!accepted.has(file.type)) return json({ message: "Only JPG, PNG, WebP, MP4 or PDF files are allowed" }, 415);
       const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "media" });
       const stream = bucket.openUploadStream(`${Date.now()}-${file.name}`, { metadata: { contentType: file.type } });
       stream.end(Buffer.from(await file.arrayBuffer()));
@@ -53,6 +60,7 @@ export default async function handler(request) {
     if (request.method === "GET") { let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } return json({ data: (await query.lean()).map(normalize) }); }
     if (request.method === "POST") {
       const body = await request.json(); const items = Array.isArray(body) ? body : [body]; const saved = [];
+      for (const item of items) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
       if (collection === "fees" && items.length > 1) {
         await Model.bulkWrite(items.map(item => ({ updateOne: { filter: { student_id: item.student_id, month: item.month }, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } })), { ordered: false });
         return json({ data: (await Model.find({ student_id: items[0].student_id }).lean()).map(normalize) }, 201);
@@ -60,7 +68,7 @@ export default async function handler(request) {
       for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } saved.push(normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject())); }
       return json({ data: saved }, 201);
     }
-    if (request.method === "PATCH") { await Model.updateMany(filter, { $set: await request.json() }); return json({ data: (await Model.find(filter).lean()).map(normalize) }); }
+    if (request.method === "PATCH") { const changes = await request.json(); const validationError = validateRecord(collection, changes); if (validationError) return json({ message: validationError }, 400); await Model.updateMany(filter, { $set: changes }); return json({ data: (await Model.find(filter).lean()).map(normalize) }); }
     if (request.method === "DELETE") return json({ data: await Model.deleteMany(filter) });
     return json({ message: "Method not allowed" }, 405);
   } catch (error) { return json({ message: error.message }, 500); }
