@@ -28,8 +28,9 @@ export default function Header() {
       }
     };
     refresh();
+    const timer = window.setInterval(refresh, 10000);
     window.addEventListener("focus", refresh);
-    return () => { mounted = false; window.removeEventListener("focus", refresh); };
+    return () => { mounted = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
   }, [role, schoolCode]);
 
   const logo = school.school_logo || active.school_logo;

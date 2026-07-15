@@ -46,8 +46,9 @@ export default function AdminDashboard() {
     if (!schoolCode) return;
     const refreshStudents = () => supabase.from("students").select("*").eq("school_code", schoolCode).then(({ data }) => setAllStudents(data || []));
     refreshStudents();
+    const timer = window.setInterval(refreshStudents, 10000);
     window.addEventListener("focus", refreshStudents);
-    return () => window.removeEventListener("focus", refreshStudents);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refreshStudents); };
   }, [schoolCode]);
 
   // 🔥 Debounced realtime search

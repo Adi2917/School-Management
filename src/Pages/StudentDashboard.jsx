@@ -27,8 +27,8 @@ export default function StudentDashboard() {
       const updated = { ...latestStudent, school_name: latestSchool?.school_name || latestStudent.school_name, school_logo: latestSchool?.school_logo || "" };
       setStudent(updated); localStorage.setItem("studentData", JSON.stringify(updated));
     };
-    refresh(); window.addEventListener("focus", refresh);
-    return () => { mounted = false; window.removeEventListener("focus", refresh); };
+    refresh(); const timer = window.setInterval(refresh, 10000); window.addEventListener("focus", refresh);
+    return () => { mounted = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
   }, [student?.id, student?.school_code]);
 
   if (!student) return null;
