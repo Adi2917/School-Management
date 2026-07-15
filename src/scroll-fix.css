@@ -1,1 +1,19 @@
-.header-brand>span img{object-fit:contain!important;background:#fff}.student-school-banner__logo img{object-fit:contain!important;background:#fff}
+.header-brand>span{position:relative;overflow:hidden;flex:0 0 37px;min-width:37px;max-width:37px;min-height:37px;max-height:37px}
+.header-brand>span img{position:static!important;display:block!important;width:37px!important;height:37px!important;min-width:37px!important;max-width:37px!important;min-height:37px!important;max-height:37px!important;margin:0!important;padding:0!important;object-fit:contain!important;background:#fff;border-radius:9px;transform:none!important}
+.register-container>.register-card,.login-container>.login-card{max-height:none!important;overflow:visible!important;min-width:0!important;margin:35px auto!important}
+.register-card form,.register-card form>*{min-width:0!important;max-width:100%!important}
+.register-card input[type="file"]{width:100%!important;overflow:hidden!important}
+.register-container,.login-container{align-items:start!important;min-height:100vh!important}
+.education-panel{position:sticky;top:0;height:100vh;min-height:720px}
+.student-school-banner{width:min(1200px,100%);margin:0 auto 18px;display:grid;grid-template-columns:68px 1fr auto;align-items:center;gap:16px;padding:16px 20px;border-radius:17px;background:linear-gradient(110deg,#292620,#3b352c);color:#fff;box-shadow:0 15px 35px #48371c20;position:relative;overflow:hidden}
+.student-school-banner:after{content:"";position:absolute;width:170px;height:170px;border-radius:50%;right:12%;top:-110px;background:#efb83f18}
+.student-school-banner__logo{width:64px;height:64px;border-radius:16px;display:grid;place-items:center;background:#efb83f;color:#292620;border:3px solid #ffffff18;overflow:hidden}
+.student-school-banner__logo img{position:static!important;display:block!important;width:100%!important;height:100%!important;min-width:0!important;max-width:100%!important;object-fit:contain!important;background:#fff;border-radius:13px;transform:none!important}
+.student-school-banner__logo svg{width:28px}
+.student-school-banner small{font-size:8px;color:#efb83f;font-weight:800;letter-spacing:1.3px}
+.student-school-banner h2{font:800 22px Manrope;margin:3px 0}
+.student-school-banner p{font-size:10px;color:#c9c1b6;margin:0}
+.student-school-banner>span{display:flex;align-items:center;gap:7px;background:#ffffff0d;border:1px solid #ffffff12;border-radius:99px;padding:9px 13px;color:#e5ddd2;font-size:9px;z-index:1}
+.student-school-banner>span svg{width:16px;color:#efb83f}
+@media(max-width:980px){.education-panel{position:relative;height:auto;min-height:auto}.register-container>.register-card,.login-container>.login-card{margin:18px auto 30px!important}}
+@media(max-width:600px){.header-brand>span{flex-basis:33px;min-width:33px;max-width:33px;min-height:33px;max-height:33px}.header-brand>span img{width:33px!important;height:33px!important;min-width:33px!important;max-width:33px!important;min-height:33px!important;max-height:33px!important}.student-school-banner{grid-template-columns:52px 1fr;padding:13px}.student-school-banner__logo{width:50px;height:50px}.student-school-banner>span{display:none}.student-school-banner h2{font-size:17px}.register-container>.register-card,.login-container>.login-card{margin:10px auto 24px!important}}
