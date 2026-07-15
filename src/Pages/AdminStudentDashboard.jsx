@@ -15,9 +15,8 @@ export default function AdminStudentDashboard() {
 
   useEffect(() => { (async () => {
     const selected = JSON.parse(localStorage.getItem("selectedStudent") || "{}");
-    if (selected.id === id && selected.school_code === activeSchool.school_code) { setStudent(selected); setLoading(false); return; }
     const { data, error: fetchError } = await supabase.from("students").select("*").eq("id", id).eq("school_code", activeSchool.school_code).single();
-    if (fetchError || !data) setError("Student record could not be loaded");
+    if (fetchError || !data) { if (selected.id === id && selected.school_code === activeSchool.school_code) setStudent(selected); else setError("Student record could not be loaded"); }
     else { setStudent(data); localStorage.setItem("selectedStudent", JSON.stringify(data)); }
     setLoading(false);
   })(); }, [id, activeSchool.school_code]);

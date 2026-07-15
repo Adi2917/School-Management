@@ -32,9 +32,10 @@ export default function StudentProfile() {
   const [photoViewer, setPhotoViewer] = useState(false);
 
   useEffect(() => { (async () => {
-    const cached = JSON.parse(localStorage.getItem("studentData") || "{}");
-    let record = cached.id === id ? cached : null;
-    if (!record) { const { data } = await supabase.from("students").select("*").eq("id", id).single(); record = data; }
+    const cachedStudent = JSON.parse(localStorage.getItem("studentData") || "{}");
+    const cachedSelected = JSON.parse(localStorage.getItem("selectedStudent") || "{}");
+    const { data: latest } = await supabase.from("students").select("*").eq("id", id).single();
+    const record = latest || (cachedStudent.id === id ? cachedStudent : cachedSelected.id === id ? cachedSelected : null);
     setStudent(record);
     if (record) { const { data } = await supabase.from("schools").select("*").eq("school_code", record.school_code).single(); setSchool(data || {}); }
     setLoading(false);

@@ -44,7 +44,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!schoolCode) return;
-    supabase.from("students").select("*").eq("school_code", schoolCode).then(({ data }) => setAllStudents(data || []));
+    const refreshStudents = () => supabase.from("students").select("*").eq("school_code", schoolCode).then(({ data }) => setAllStudents(data || []));
+    refreshStudents();
+    window.addEventListener("focus", refreshStudents);
+    return () => window.removeEventListener("focus", refreshStudents);
   }, [schoolCode]);
 
   // 🔥 Debounced realtime search
@@ -86,10 +89,13 @@ export default function AdminDashboard() {
       const changes = { school_name: profileForm.school_name?.trim(), admin_name: profileForm.admin_name?.trim(), email: profileForm.email?.trim(), phone: profileForm.phone, location: profileForm.location?.trim(), admin_pin: profileForm.admin_pin, school_logo };
       const { data, error } = await supabase.from("schools").update(changes).eq("school_code", schoolCode).select().single();
       if (error) throw error;
+      const { error: studentSyncError } = await supabase.from("students").update({ school_name: changes.school_name, school_logo }).eq("school_code", schoolCode);
+      if (studentSyncError) throw studentSyncError;
       const updated = data || { ...admin, ...changes };
       setAdmin(updated); setProfileForm(updated); setNewLogo(null);
       localStorage.setItem("schoolData", JSON.stringify(updated)); localStorage.setItem("adminData", JSON.stringify(updated));
-      alert("Admin and school profile updated");
+      setAllStudents(current => current.map(student => ({ ...student, school_name: changes.school_name, school_logo })));
+      alert("School profile and every connected student updated");
     } catch (error) { alert(error.message || "Profile update failed"); }
     finally { setProfileSaving(false); }
   };
