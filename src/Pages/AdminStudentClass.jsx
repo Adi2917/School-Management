@@ -4,6 +4,12 @@ import { supabase } from "../supabaseClient";
 import "./AdminStudentClass.css";
 import { ArrowRight, BookOpen, GraduationCap, Search, UserRound, Users } from "lucide-react";
 
+const getInitials = (name = "") => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "ST";
+  return `${parts[0][0] || ""}${parts.length > 1 ? parts.at(-1)[0] : ""}`.toUpperCase();
+};
+
 export default function AdminStudentClass() {
   const { className } = useParams();
   const navigate = useNavigate();
@@ -76,15 +82,13 @@ export default function AdminStudentClass() {
 
         <div className="class-toolbar"><div><small>FILTER BY SECTION</small>
         <div className="section-filter">
-          {["A", "B", "C"].map((sec) => (
+          {["", "A", "B", "C"].map((sec) => (
             <button
-              key={sec}
+              key={sec || "all"}
               className={section === sec ? "active" : ""}
-              onClick={() =>
-                setSection(section === sec ? "" : sec)
-              }
+              onClick={() => setSection(sec)}
             >
-              {sec}
+              {sec || "All"}
             </button>
           ))}
         </div>
@@ -104,7 +108,10 @@ export default function AdminStudentClass() {
               className="student-cell"
               onClick={() => openStudent(student)}
             >
-              <img src={student.photo_url || "/brand-mark.svg"} alt=""/><span><small>ROLL {student.roll}</small><b>{student.name}</b><em>Section {student.section}</em></span><ArrowRight/>
+              {student.photo_url
+                ? <img src={student.photo_url} alt={`${student.name} profile`} />
+                : <span className="student-cell__initials" aria-hidden="true">{getInitials(student.name)}</span>}
+              <span><small>ROLL {student.roll}</small><b>{student.name}</b><em>Section {student.section}</em></span><ArrowRight/>
             </button>
           ))}
           {filteredStudents.length === 0 && <div className="class-empty"><UserRound/><h3>No students found</h3><p>Try another section or search term.</p></div>}

@@ -84,7 +84,6 @@ export default function StudentRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!imageFile) return showPopup("error", "Please upload image");
     if (form.phone.length !== 10) return showPopup("error", "Phone must be 10 digits");
     if (form.pin.length !== 4) return showPopup("error", "PIN must be 4 digits");
     if (form.school_code.length !== 6) return showPopup("error", "School code must be 6 digits");
@@ -108,7 +107,7 @@ export default function StudentRegister() {
     }
 
     try {
-      const imageDataUrl = await uploadMedia(imageFile);
+      const imageDataUrl = imageFile ? await uploadMedia(imageFile) : "";
 
       const payload = {
         id: createLocalId(),
@@ -204,7 +203,7 @@ export default function StudentRegister() {
 
           <textarea name="address" placeholder="Address" onChange={handleChange} required />
 
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} required />
+          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0] || null)} />
 
           <button type="submit" disabled={loading}>
             {loading ? "Registering..." : "Register"}
