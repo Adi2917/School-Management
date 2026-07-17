@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import crypto from "node:crypto";
 import multer from "multer";
 import { pathToFileURL } from "node:url";
+import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "./lib/sheetSync.js";
 
 dotenv.config();
 export const app = express();
@@ -32,8 +33,23 @@ const validateRecord = (collection, item) => {
   if (collection === "students" && item.pin !== undefined && !/^\d{4}$/.test(String(item.pin))) return "Student PIN must contain exactly 4 digits";
   return "";
 };
+const sheetAuth = (req, res, next) => {
+  const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!process.env.SHEET_SYNC_SECRET || supplied !== process.env.SHEET_SYNC_SECRET) return res.status(401).json({ message: "Unauthorized" });
+  next();
+};
+const mirrorCollection = async (collection, Model) => {
+  try { return await syncCollectionToSheet(collection, Model); }
+  catch (error) { console.error(`Google Sheet mirror failed for ${collection}:`, error.message); return { error: error.message }; }
+};
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" }));
+app.post("/api/sheet-sync", sheetAuth, async (req, res, next) => {
+  try {
+    const result = req.query.direction === "from-sheet" ? await syncMongoFromSheet(modelFor) : await syncAllCollectionsToSheet(modelFor);
+    res.json({ data: result });
+  } catch (error) { next(error); }
+});
 app.post("/api/uploads", upload.single("file"), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: "Choose a file" });
@@ -56,9 +72,9 @@ app.get("/api/uploads/:id", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 app.get("/api/:collection", guard, async (req, res, next) => { try { let query = modelFor(req.params.collection).find(filterFrom(req.query)); if (req.query.sort) { const [field, direction] = req.query.sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } res.json({ data: (await query.lean()).map(normalize) }); } catch (error) { next(error); } });
-app.post("/api/:collection", guard, async (req, res, next) => { try { const input = Array.isArray(req.body) ? req.body : [req.body]; const Model = modelFor(req.params.collection); const saved = []; if (req.params.collection === "fees" && input.length > 1) { await Model.bulkWrite(input.map(item => ({ updateOne:{ filter:{ student_id:item.student_id, month:item.month }, update:{ $setOnInsert:{ id:item.id || crypto.randomUUID(), ...item } }, upsert:true } })), { ordered:false }); return res.status(201).json({ data:(await Model.find({ student_id:input[0].student_id }).lean()).map(normalize) }); } for (const item of input) { let key = null; if (req.params.collection === "schools") key = { school_code: item.school_code }; if (req.params.collection === "students") key = { school_code: item.school_code, number: item.number }; if (req.params.collection === "fees") key = { student_id: item.student_id, month: item.month }; if (req.params.collection === "results") key = { student_id: item.student_id, exam_type_id: item.exam_type_id, subject: item.subject }; if (req.params.collection === "exam_types") key = { name:item.name, school_code:item.school_code }; const existing = key ? await Model.findOne(key) : null; saved.push(existing || await Model.create({ id: item.id || crypto.randomUUID(), ...item })); } res.status(201).json({ data: saved.map(normalize) }); } catch (error) { next(error); } });
-app.patch("/api/:collection", guard, async (req, res, next) => { try { const filter = filterFrom(req.query); await modelFor(req.params.collection).updateMany(filter, { $set: req.body }); res.json({ data: (await modelFor(req.params.collection).find(filter).lean()).map(normalize) }); } catch (error) { next(error); } });
-app.delete("/api/:collection", guard, async (req, res, next) => { try { res.json({ data: await modelFor(req.params.collection).deleteMany(filterFrom(req.query)) }); } catch (error) { next(error); } });
+app.post("/api/:collection", guard, async (req, res, next) => { try { const input = (Array.isArray(req.body) ? req.body : [req.body]).map(item => ({ ...item, sheet_managed:false })); const Model = modelFor(req.params.collection); const saved = []; if (req.params.collection === "fees" && input.length > 1) { await Model.bulkWrite(input.map(item => ({ updateOne:{ filter:{ student_id:item.student_id, month:item.month }, update:{ $setOnInsert:{ id:item.id || crypto.randomUUID(), ...item } }, upsert:true } })), { ordered:false }); const records=(await Model.find({ student_id:input[0].student_id }).lean()).map(normalize); await mirrorCollection(req.params.collection,Model); return res.status(201).json({ data:records }); } if(input.length>1){await Model.bulkWrite(input.map(item=>{let key={id:item.id||crypto.randomUUID()};if(req.params.collection==="schools")key={school_code:item.school_code};if(req.params.collection==="students")key={school_code:item.school_code,number:item.number};if(req.params.collection==="results")key={student_id:item.student_id,exam_type_id:item.exam_type_id,subject:item.subject};if(req.params.collection==="exam_types")key={name:item.name,school_code:item.school_code};return{updateOne:{filter:key,update:{$setOnInsert:{id:item.id||crypto.randomUUID(),...item}},upsert:true}}}),{ordered:false});await mirrorCollection(req.params.collection,Model);return res.status(201).json({data:input.map(normalize)});} for (const item of input) { let key = null; if (req.params.collection === "schools") key = { school_code: item.school_code }; if (req.params.collection === "students") key = { school_code: item.school_code, number: item.number }; if (req.params.collection === "fees") key = { student_id: item.student_id, month: item.month }; if (req.params.collection === "results") key = { student_id: item.student_id, exam_type_id: item.exam_type_id, subject: item.subject }; if (req.params.collection === "exam_types") key = { name:item.name, school_code:item.school_code }; const existing = key ? await Model.findOne(key) : null; saved.push(existing || await Model.create({ id: item.id || crypto.randomUUID(), ...item })); } await mirrorCollection(req.params.collection,Model); res.status(201).json({ data: saved.map(normalize) }); } catch (error) { next(error); } });
+app.patch("/api/:collection", guard, async (req, res, next) => { try { const filter = filterFrom(req.query); const Model=modelFor(req.params.collection); await Model.updateMany(filter, { $set: { ...req.body, sheet_managed:false } }); const records=(await Model.find(filter).lean()).map(normalize); await mirrorCollection(req.params.collection,Model); res.json({ data:records }); } catch (error) { next(error); } });
+app.delete("/api/:collection", guard, async (req, res, next) => { try { const Model=modelFor(req.params.collection); const result=await Model.deleteMany(filterFrom(req.query)); await mirrorCollection(req.params.collection,Model); res.json({ data:result }); } catch (error) { next(error); } });
 // Express identifies error middleware by its four-argument signature.
 // eslint-disable-next-line no-unused-vars
 app.use((error, _req, res, _next) => res.status(500).json({ message: error.message }));
