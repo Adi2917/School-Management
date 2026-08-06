@@ -49,6 +49,19 @@ export default async function handler(request) {
     const url = new URL(request.url);
     const route = url.pathname.split("/api/").pop().split("/").filter(Boolean);
     if (route[0] === "health") return json({ status: "ok", database: "connected" });
+    if (route[0] === "stats" && request.method === "GET") {
+      const [schools, students] = await Promise.all([
+        modelFor("schools").countDocuments({}),
+        modelFor("students").countDocuments({}),
+      ]);
+      return new Response(JSON.stringify({ data: { schools, students } }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=15, stale-while-revalidate=45",
+        },
+      });
+    }
     if (route[0] === "sheet-sync" && request.method === "POST") {
       if (!authorizedForSheetSync(request)) return json({ message: "Unauthorized" }, 401);
       const direction = url.searchParams.get("direction") || "to-sheet";

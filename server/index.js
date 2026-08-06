@@ -44,6 +44,16 @@ const mirrorCollection = async (collection, Model) => {
 };
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" }));
+app.get("/api/stats", async (_req, res, next) => {
+  try {
+    const [schools, students] = await Promise.all([
+      modelFor("schools").countDocuments({}),
+      modelFor("students").countDocuments({}),
+    ]);
+    res.set("Cache-Control", "public, max-age=15, stale-while-revalidate=45");
+    res.json({ data: { schools, students } });
+  } catch (error) { next(error); }
+});
 app.post("/api/sheet-sync", sheetAuth, async (req, res, next) => {
   try {
     const result = req.query.direction === "from-sheet" ? await syncMongoFromSheet(modelFor) : await syncAllCollectionsToSheet(modelFor);

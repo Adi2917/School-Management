@@ -1,15 +1,39 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSessionDestination } from "../session";
-import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, GraduationCap, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { API_URL } from "../supabaseClient";
+import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, ShieldCheck, Sparkles, Users } from "lucide-react";
 import "./Home.css";
 
 export default function Home() {
   const navigate = useNavigate();
+  const [communityStats, setCommunityStats] = useState({ schools: null, students: null });
   useEffect(() => {
     const destination = getSessionDestination();
     if (destination) navigate(destination, { replace: true });
   }, [navigate]);
+  useEffect(() => {
+    let active = true;
+    const loadStats = async () => {
+      try {
+        const response = await fetch(`${API_URL}/stats`);
+        if (!response.ok) throw new Error("Community stats unavailable");
+        const body = await response.json();
+        if (active) setCommunityStats({
+          schools: Number(body.data?.schools || 0),
+          students: Number(body.data?.students || 0),
+        });
+      } catch (error) {
+        console.warn(error.message);
+      }
+    };
+    loadStats();
+    const refresh = window.setInterval(loadStats, 30000);
+    return () => { active = false; window.clearInterval(refresh); };
+  }, []);
+
+  const displayCount = value => value === null ? "—" : new Intl.NumberFormat("en-IN").format(value);
+
   return <div className="landing-page">
     <nav className="landing-nav">
       <button className="brand" onClick={() => navigate("/")} aria-label="Connect Your School home">
@@ -44,6 +68,29 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="community-proof" aria-labelledby="community-title">
+        <div className="community-copy">
+          <span className="community-kicker"><ShieldCheck size={16}/> TRUSTED BY A GROWING COMMUNITY</span>
+          <h2 id="community-title">Schools connect.<br/>Students move forward.</h2>
+          <p>Live platform numbers, updated automatically as new schools and students join Connect Your School.</p>
+          <span className="live-indicator"><i/> Live from our registered community</span>
+        </div>
+        <div className="community-numbers" aria-live="polite">
+          <article>
+            <span className="stat-icon"><Building2/></span>
+            <strong>{displayCount(communityStats.schools)}</strong>
+            <h3>Registered schools</h3>
+            <p>Institutions building their connected campus.</p>
+          </article>
+          <article>
+            <span className="stat-icon"><Users/></span>
+            <strong>{displayCount(communityStats.students)}</strong>
+            <h3>Connected students</h3>
+            <p>Student records organized in one secure platform.</p>
+          </article>
+        </div>
+      </section>
+
       <section className="feature-strip" id="features">
         <div><Building2/><span><b>School workspace</b><small>Manage your institution</small></span></div>
         <div><Users/><span><b>Student profiles</b><small>Organized and accessible</small></span></div>
@@ -57,6 +104,17 @@ export default function Home() {
           <article><span className="choice-number">01</span><Building2/><h3>Create a school workspace</h3><p>Register your institution and begin managing your school community in minutes.</p><button onClick={() => navigate("/SchoolRegister")}>Get started <ArrowRight/></button></article>
           <article className="choice-dark"><span className="choice-number">02</span><GraduationCap/><h3>Enter your school portal</h3><p>Students and administrators can securely access their dedicated experience.</p><button onClick={() => navigate("/StudentChoice")}>Join now <ArrowRight/></button></article>
         </div>
+      </section>
+
+      <section className="beyondnull-section" aria-label="BeyondNull">
+        <div className="beyondnull-orbit" aria-hidden="true"><i/><i/><i/></div>
+        <div className="beyondnull-monogram" aria-hidden="true">BN</div>
+        <div className="beyondnull-copy">
+          <span>BEYONDNULL PRESENTS</span>
+          <h2>Digital products made to move ideas forward.</h2>
+          <p>Connect Your School is a BeyondNull product. More thoughtful digital experiences are on the way.</p>
+        </div>
+        <a className="beyondnull-link" href="https://beyondnull.in" target="_blank" rel="noopener noreferrer">Visit BeyondNull <ExternalLink size={18}/></a>
       </section>
     </main>
     <footer><span className="brand"><span className="brand-mark"><BookOpen size={20}/></span><span>Connect <b>Your School</b></span></span><p>One community. One connected school.</p></footer>
