@@ -2,7 +2,7 @@
   "expo": {
     "name": "Connect Your School",
     "slug": "connect-your-school",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/connect-your-school-icon.png",
     "scheme": "connectyourschool",
@@ -10,11 +10,11 @@
     "ios": {
       "icon": "./assets/images/connect-your-school-icon.png",
       "bundleIdentifier": "in.connectyourschool.app",
-      "buildNumber": "1"
+      "buildNumber": "2"
     },
     "android": {
       "package": "in.connectyourschool.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#F4B93A",
         "foregroundImage": "./assets/images/connect-your-school-foreground.png",
@@ -50,6 +50,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "29cf19da-687b-45d2-8b92-75e8e9b92cdf"
+      }
     }
   }
 }

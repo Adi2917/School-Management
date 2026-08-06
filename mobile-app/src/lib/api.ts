@@ -7,7 +7,10 @@ export type Fee = { id?: string; student_id: string; school_code?: string; month
 export type Notice = { id?: string; school_code: string; title?: string; message?: string; file_url?: string; file_type?: string; created_at?: string; updated_at?: string };
 export type Result = { id?: string; student_id: string; school_code?: string; exam_type_id?: string; exam_name?: string; subject: string; marks?: string | number; obtained_marks?: string | number; full_marks?: string | number };
 export type ExamType = { id?: string; school_code: string; name: string };
-export type Session = { role: UserRole; user: School | Student; token: string };
+export type Session =
+  | { role: 'admin'; user: School; token: string }
+  | { role: 'student'; user: Student; token: string };
+export type PlatformStats = { schools: number; students: number };
 
 let accessToken = '';
 export const setAccessToken = (token?: string) => { accessToken = token || ''; };
@@ -52,8 +55,16 @@ function query(values: Record<string, string | undefined>) {
 }
 function first<T>(value: T | T[] | null | undefined): T | null { return Array.isArray(value) ? value[0] ?? null : value ?? null; }
 
-export const loginAdmin = (schoolCode: string, pin: string) => request<Session>('/auth/admin/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), pin: pin.trim() }) });
-export const loginStudent = (schoolCode: string, phone: string, pin: string) => request<Session>('/auth/student/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), pin: pin.trim() }) });
+type LoginPayload = Omit<Session, 'role'> & { role?: UserRole };
+function normalizeSession(role: 'admin', value: LoginPayload): Extract<Session, { role: 'admin' }>;
+function normalizeSession(role: 'student', value: LoginPayload): Extract<Session, { role: 'student' }>;
+function normalizeSession(role: UserRole, value: LoginPayload): Session {
+  if (!value?.token || !value?.user) throw new Error('The server returned an incomplete login response.');
+  return { role, token: value.token, user: value.user } as Session;
+}
+export const loginAdmin = async (schoolCode: string, pin: string) => normalizeSession('admin', await request<LoginPayload>('/auth/admin/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), pin: pin.trim() }) }));
+export const loginStudent = async (schoolCode: string, phone: string, pin: string) => normalizeSession('student', await request<LoginPayload>('/auth/student/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), pin: pin.trim() }) }));
+export const getStats = () => request<PlatformStats>('/stats');
 export async function getSchool(schoolCode: string) { return first(await request<School[]>('/schools' + query({ school_code: schoolCode }))); }
 export async function getStudent(id: string) { return first(await request<Student[]>('/students' + query({ id }))); }
 export const getStudents = (schoolCode: string) => request<Student[]>('/students' + query({ school_code: schoolCode, sort: 'class:asc' }));
@@ -76,5 +87,5 @@ export function imageUrl(record: School | Student) {
   const origin = API_URL.replace(/\/api$/, '');
   return raw.startsWith('/') ? origin + raw : `${origin}/${raw}`;
 }
-export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile };
+export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile };
 export { API_URL };
