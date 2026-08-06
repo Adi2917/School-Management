@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { authLogin } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
 import { saveSession } from "../session";
@@ -47,39 +47,14 @@ export default function SchoolLogin() {
     setLoading(true);
 
     try {
-      const localRegistry = JSON.parse(localStorage.getItem("schoolRegistry") || "[]");
-      const match = localRegistry.find(
-        (school) =>
-          school.email === form.email &&
-          school.school_code === form.school_code &&
-          school.admin_pin === form.admin_pin
-      );
-
-      if (!match) {
-        const { data, error } = await supabase
-          .from("schools")
-          .select("*")
-          .eq("email", form.email)
-          .eq("school_code", form.school_code)
-          .eq("admin_pin", form.admin_pin)
-          .single();
-
-        if (error || !data) {
-          setLoading(false);
-          return showPopup("error", "Invalid school credentials");
-        }
-
-        localStorage.setItem("adminData", JSON.stringify(data));
-        localStorage.setItem("schoolData", JSON.stringify(data));
-        saveSession("admin");
-        setLoading(false);
-        showPopup("success", "School login successful");
-        setTimeout(() => navigate("/AdminDashboard"), 1000);
-        return;
-      }
-
-      localStorage.setItem("adminData", JSON.stringify(match));
-      localStorage.setItem("schoolData", JSON.stringify(match));
+      const school = await authLogin("admin", {
+        email: form.email.trim(),
+        school_code: form.school_code,
+        pin: form.admin_pin,
+      });
+      localStorage.removeItem("schoolRegistry");
+      localStorage.setItem("adminData", JSON.stringify(school));
+      localStorage.setItem("schoolData", JSON.stringify(school));
       saveSession("admin");
       setLoading(false);
       showPopup("success", "School login successful");
@@ -87,7 +62,7 @@ export default function SchoolLogin() {
     } catch (err) {
       console.error(err);
       setLoading(false);
-      showPopup("error", "Something went wrong");
+      showPopup("error", err.message || "Invalid school credentials");
     }
   };
 

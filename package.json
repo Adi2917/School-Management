@@ -12,7 +12,11 @@
     "seed:check": "node scripts/seed-demo-data.mjs --dry-run",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mobile:start": "npm --prefix mobile-app start",
+    "mobile:android": "npm --prefix mobile-app run android",
+    "mobile:check": "npm --prefix mobile-app run typecheck",
+    "test:auth": "node --test server/lib/auth.test.js"
   },
   "dependencies": {
     "appwrite": "^22.0.0",

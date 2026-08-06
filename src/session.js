@@ -6,6 +6,7 @@ export function saveSession(role) {
 
 export function clearSession(role) {
   if (!role || localStorage.getItem(SESSION_KEY) === role) localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem("connectYourSchoolToken");
 }
 
 export function getSessionDestination() {

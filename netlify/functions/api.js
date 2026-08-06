@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
+import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
@@ -14,7 +15,7 @@ const connect = () => {
   return connectionPromise;
 };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-const normalize = value => { const { _id, ...rest } = value; return { id: rest.id || _id?.toString(), ...rest }; };
+const normalize = value => { const { _id, ...rest } = value; return sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); };
 const uniqueFilter = (collection, item) => {
   if (collection === "schools") return { school_code: item.school_code };
   if (collection === "students") return { school_code: item.school_code, number: item.number };
@@ -41,9 +42,26 @@ const mirrorCollection = async (collection, Model) => {
     return { configured: true, error: error.message };
   }
 };
+const recordSchoolCode = async (collection, record) => {
+  if (record?.school_code) return String(record.school_code);
+  if (["fees", "results"].includes(collection) && record?.student_id) {
+    const student = await modelFor("students").findOne({ $or: [{ id: String(record.student_id) }, ...(mongoose.Types.ObjectId.isValid(record.student_id) ? [{ _id: new mongoose.Types.ObjectId(record.student_id) }] : [])] }).lean();
+    return String(student?.school_code || "");
+  }
+  return "";
+};
+const authorizeMutation = async (request, collection, records = []) => {
+  if (request.method === "POST" && ["schools", "students"].includes(collection)) return true;
+  const claims = bearerClaims(request.headers);
+  if (!claims) return false;
+  if (collection === "students" && claims.role === "student") return records.length > 0 && records.every(record => String(record.id || record._id) === String(claims.subject));
+  if (claims.role !== "admin" || !records.length) return false;
+  const codes = await Promise.all(records.map(record => recordSchoolCode(collection, record)));
+  return codes.every(code => code && code === String(claims.school_code));
+};
 
 export default async function handler(request) {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS" } });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS" } });
   try {
     await connect();
     const url = new URL(request.url);
@@ -70,6 +88,22 @@ export default async function handler(request) {
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
     }
+    if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
+      const role = route[1];
+      if (!new Set(["admin", "student"]).has(role)) return json({ message: "Invalid account type" }, 400);
+      const body = await request.json();
+      const Model = modelFor(role === "admin" ? "schools" : "students");
+      const normalizedEmail = String(body.email || "").trim().toLowerCase();
+      const filter = role === "admin"
+        ? { school_code: String(body.school_code || "").trim(), ...(normalizedEmail ? { $or: [{ email: normalizedEmail }, { admin_email: normalizedEmail }] } : {}) }
+        : { school_code: String(body.school_code || "").trim(), number: String(body.number || "").trim() };
+      const record = await Model.findOne(filter);
+      if (!record) return json({ message: "Invalid login details" }, 401);
+      const auth = await authenticate({ role, pin: String(body.pin || ""), record, Model });
+      if (!auth) return json({ message: "Invalid login details" }, 401);
+      await mirrorCollection(role === "admin" ? "schools" : "students", Model);
+      return json({ data: auth });
+    }
     if (route[0] === "uploads" && request.method === "POST") {
       const form = await request.formData(); const file = form.get("file");
       if (!file || typeof file.arrayBuffer !== "function") return json({ message: "Choose a file" }, 400);
@@ -94,8 +128,10 @@ export default async function handler(request) {
     if (rawFilter.id && mongoose.Types.ObjectId.isValid(rawFilter.id)) { const { id, ...rest } = rawFilter; filter = { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; }
     if (request.method === "GET") { let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } return json({ data: (await query.lean()).map(normalize) }); }
     if (request.method === "POST") {
-      const body = await request.json(); const items = (Array.isArray(body) ? body : [body]).map(item => ({ ...item, sheet_managed: false })); const saved = [];
-      for (const item of items) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
+      const body = await request.json(); const rawItems = Array.isArray(body) ? body : [body];
+      if (!(await authorizeMutation(request, collection, rawItems))) return json({ message: "You are not allowed to change these records" }, 403);
+      for (const item of rawItems) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
+      const items = await Promise.all(rawItems.map(async item => ({ ...(await protectCredentials(collection, item)), sheet_managed: false }))); const saved = [];
       if (collection === "fees" && items.length > 1) {
         await Model.bulkWrite(items.map(item => ({ updateOne: { filter: { student_id: item.student_id, month: item.month }, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } })), { ordered: false });
         const records = (await Model.find({ student_id: items[0].student_id }).lean()).map(normalize);
@@ -114,8 +150,8 @@ export default async function handler(request) {
       await mirrorCollection(collection, Model);
       return json({ data: saved }, 201);
     }
-    if (request.method === "PATCH") { const changes = await request.json(); const validationError = validateRecord(collection, changes); if (validationError) return json({ message: validationError }, 400); await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false } }); const records = (await Model.find(filter).lean()).map(normalize); await mirrorCollection(collection, Model); return json({ data: records }); }
-    if (request.method === "DELETE") { const result = await Model.deleteMany(filter); await mirrorCollection(collection, Model); return json({ data: result }); }
+    if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : collection === "students" && rawChanges.pin !== undefined ? { pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); await mirrorCollection(collection, Model); return json({ data: records }); }
+    if (request.method === "DELETE") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to delete these records" },403); const result = await Model.deleteMany(filter); await mirrorCollection(collection, Model); return json({ data: result }); }
     return json({ message: "Method not allowed" }, 405);
   } catch (error) { return json({ message: error.message }, 500); }
 }

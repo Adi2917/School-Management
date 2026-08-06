@@ -1,5 +1,23 @@
 const DEFAULT_API_URL = import.meta.env.DEV ? "http://localhost:5000/api" : "/api";
 const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
+const TOKEN_KEY = "connectYourSchoolToken";
+
+export const setApiToken = (token) => {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+};
+
+export async function authLogin(role, credentials) {
+  const response = await fetch(`${API_URL}/auth/${role}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || "Invalid credentials");
+  setApiToken(body.data?.token);
+  return body.data?.user;
+}
 
 class QueryBuilder {
   constructor(collection) { this.collection = collection; this.filters = []; this.action = "select"; this.payload = null; this.one = false; }
@@ -15,7 +33,8 @@ class QueryBuilder {
       const params = new URLSearchParams();
       this.filters.forEach(([key, value]) => params.append(key, value));
       if (this.sort) params.set("sort", `${this.sort[0]}:${this.sort[1]}`);
-      const options = { headers: { "Content-Type": "application/json" } };
+      const token = localStorage.getItem(TOKEN_KEY);
+      const options = { headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } };
       if (this.action === "insert") { options.method = "POST"; options.body = JSON.stringify(this.payload); }
       if (this.action === "update") { options.method = "PATCH"; options.body = JSON.stringify(this.payload); }
       if (this.action === "delete") options.method = "DELETE";

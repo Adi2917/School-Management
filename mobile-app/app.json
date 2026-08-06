@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Connect Your School",
+    "slug": "connect-your-school",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/connect-your-school-icon.png",
+    "scheme": "connectyourschool",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "icon": "./assets/images/connect-your-school-icon.png",
+      "bundleIdentifier": "in.connectyourschool.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "in.connectyourschool.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#F4B93A",
+        "foregroundImage": "./assets/images/connect-your-school-foreground.png",
+        "backgroundImage": "./assets/images/connect-your-school-background.png",
+        "monochromeImage": "./assets/images/connect-your-school-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6F0E5",
+          "image": "./assets/images/connect-your-school-splash.png",
+          "imageWidth": 150
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Connect Your School uses your photos only when you choose a school logo, student profile photo, or notice attachment.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

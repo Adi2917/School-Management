@@ -12,7 +12,7 @@ const fields = [
   { label: "Section", key: "section", icon: GraduationCap },
   { label: "Roll number", key: "roll", icon: ShieldCheck },
   { label: "Contact number", key: "number", icon: Phone },
-  { label: "Student PIN", key: "pin", icon: KeyRound },
+  { label: "Change PIN", key: "pin", icon: KeyRound },
   { label: "Address", key: "address", icon: MapPin },
 ];
 
@@ -56,7 +56,7 @@ export default function StudentProfile() {
     cacheStudent(updated);
     return updated;
   };
-  const openEdit = field => { setEdit(field); setValue(String(student[field.key] ?? "")); };
+  const openEdit = field => { setEdit(field); setValue(field.key === "pin" ? "" : String(student[field.key] ?? "")); };
   const save = async () => {
     const clean = value.trim();
     if (!clean) return alert("Value cannot be empty");
@@ -99,7 +99,7 @@ export default function StudentProfile() {
         <button className="profile-avatar-button" onClick={() => setPhotoMenu(true)} aria-label="Profile photo options">{student.photo_url ? <img src={student.photo_url} alt={student.name}/> : <span className="profile-avatar-initials">{initials(student.name)}</span>}</button>
         <div><small>STUDENT PROFILE</small><h1>{student.name}</h1><p>Class {student.class}-{student.section} · Roll {student.roll}</p></div>
       </div>
-      <div className="profile-details-grid">{fields.map(field => { const Icon = field.icon; return <article key={field.key}><span><Icon/></span><div><small>{field.label}</small><b title={student[field.key]}>{field.key === "pin" ? student.pin || "—" : student[field.key] || "—"}</b></div><button onClick={() => openEdit(field)} aria-label={`Edit ${field.label}`}><Edit3/></button></article>; })}</div>
+      <div className="profile-details-grid">{fields.map(field => { const Icon = field.icon; return <article key={field.key}><span><Icon/></span><div><small>{field.label}</small><b title={field.key === "pin" ? "Current PIN is hidden" : student[field.key]}>{field.key === "pin" ? "Protected ••••" : student[field.key] || "—"}</b></div><button onClick={() => openEdit(field)} aria-label={`Edit ${field.label}`}><Edit3/></button></article>; })}</div>
     </section>
     <input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={changePhoto}/>
     {photoMenu && <div className="media-action-sheet" onMouseDown={() => setPhotoMenu(false)}><section className="media-action-card" onMouseDown={event => event.stopPropagation()}><small>PROFILE PHOTO</small><h2>Choose an action</h2><div className="media-action-list"><button disabled={!student.photo_url} onClick={() => { setPhotoMenu(false); setPhotoViewer(true); }}><Eye/> View photo</button><button disabled={saving} onClick={() => fileRef.current?.click()}><ImagePlus/> {student.photo_url ? "Change photo" : "Add photo"}</button><button className="danger" disabled={!student.photo_url || saving} onClick={removePhoto}><Trash2/> Remove photo</button><button onClick={() => setPhotoMenu(false)}><X/> Cancel</button></div></section></div>}

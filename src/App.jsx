@@ -17,6 +17,7 @@ import StudentNotification from "./Pages/StudentNotification";
 import AdminStudentNotification from "./Pages/AdminStudentNotification";
 import AdminStudentResult from "./Pages/AdminStudentResult";
 import StudentResult from "./Pages/StudentResult";
+import PrivacyPolicy from "./Pages/PrivacyPolicy";
 
 import MainLayout from "./Layout/MainLayout";
 import ScrollToTop from "./Components/ScrollToTop";
@@ -29,6 +30,7 @@ function App() {
       <Route path="/Home" element={<Home />} />
       <Route path="/SchoolRegister" element={<SchoolRegister />} />
       <Route path="/SchoolLogin" element={<SchoolLogin />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
 
       {/* Pages WITH Layout */}
       <Route element={<MainLayout />}>
