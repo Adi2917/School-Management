@@ -1,9 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Back, Brand, Field, Page } from '@/components/ui';
+import { AppHeader, Field } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { api, type School, type Student } from '@/lib/api';
 
@@ -76,8 +76,10 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
     finally { setBusy(false); }
   };
 
-  return <Page scroll><View style={styles.shell}>
-    <View style={styles.header}><Back /><Brand /></View>
+  return <View style={styles.page}>
+    <AppHeader back />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+    <View style={styles.shell}>
     <View style={styles.hero}><Text style={styles.kicker}>{isSchool ? 'SCHOOL ONBOARDING' : 'STUDENT ONBOARDING'}</Text><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
     <View style={styles.card}>
       {isSchool ? <>
@@ -104,7 +106,9 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
       <Pressable disabled={busy} onPress={submit} style={[styles.submit, busy && styles.disabled]}><Text style={styles.submitText}>{busy ? 'Registering securely…' : (isSchool ? 'Create school workspace' : 'Complete registration')}</Text></Pressable>
       <Pressable onPress={() => router.replace(isSchool ? '/admin-login' : '/student-login')}><Text style={styles.loginLink}>Already registered? Open login</Text></Pressable>
     </View>
-  </View></Page>;
+    </View>
+    </ScrollView>
+  </View>;
 }
 
 function Choice({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
@@ -112,7 +116,9 @@ function Choice({ label, active, onPress }: { label: string; active: boolean; on
 }
 
 const styles = StyleSheet.create({
-  shell: { width: '100%', maxWidth: 680, paddingHorizontal: 18, paddingTop: 10, gap: 20 }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, hero: { gap: 8, paddingHorizontal: 4 },
+  page: { flex: 1, backgroundColor: colors.cream },
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 22, paddingBottom: 40 },
+  shell: { width: '100%', maxWidth: 680, gap: 20 }, hero: { gap: 8, paddingHorizontal: 4 },
   kicker: { color: colors.brown, fontWeight: '900', letterSpacing: 1.6, fontSize: 10 }, title: { color: colors.ink, fontWeight: '900', fontSize: 38, lineHeight: 42, letterSpacing: -1 }, subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22 },
   card: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 26, padding: 20, gap: 17, shadowColor: '#342c20', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 5 },
   schoolResult: { backgroundColor: colors.goldSoft, borderColor: '#e5c36d', borderWidth: 1, borderRadius: 15, padding: 13, gap: 3 }, schoolMissing: { backgroundColor: '#fbf7ef', borderColor: colors.line }, schoolResultLabel: { color: colors.brown, fontSize: 9, letterSpacing: 1.3, fontWeight: '900' }, schoolResultName: { color: colors.ink, fontSize: 15, fontWeight: '800' },

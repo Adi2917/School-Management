@@ -87,5 +87,11 @@ export function imageUrl(record: School | Student) {
   const origin = API_URL.replace(/\/api$/, '');
   return raw.startsWith('/') ? origin + raw : `${origin}/${raw}`;
 }
+export function mediaUrl(raw?: string | null) {
+  if (!raw) return undefined;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const origin = API_URL.replace(/\/api$/, '');
+  return raw.startsWith('/') ? origin + raw : `${origin}/${raw}`;
+}
 export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile };
 export { API_URL };

@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Brand, Page } from '@/components/ui';
+import { Brand, Page, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { api, PlatformStats } from '@/lib/api';
@@ -16,7 +16,20 @@ export default function WelcomeScreen() {
     if (!loading && session) router.replace(session.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
   }, [loading, session]);
 
-  if (loading || session) return <Page><ActivityIndicator size="large" color={colors.gold} /></Page>;
+  if (loading || session) {
+    return (
+      <Page>
+        <View style={styles.boot}>
+          <Brand large />
+          <View style={styles.bootLines}>
+            <Skeleton width="76%" height={30} radius={12} />
+            <Skeleton width="92%" height={16} />
+            <Skeleton width="64%" height={16} />
+          </View>
+        </View>
+      </Page>
+    );
+  }
 
   return (
     <Page scroll>
@@ -48,6 +61,8 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  boot: { width: '100%', maxWidth: 520, paddingHorizontal: 28, gap: 34 },
+  bootLines: { gap: 12 },
   shell: { width: '100%', maxWidth: 720, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 18, gap: 22 },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4d9d65', borderWidth: 2, borderColor: '#d8eadc' },

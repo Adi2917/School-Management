@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Back, Brand, Field, Page } from '@/components/ui';
+import { AppHeader, Field } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { api } from '@/lib/api';
@@ -38,8 +38,9 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
   };
 
   return (
-    <Page scroll>
-      <View style={styles.top}><Back /><Brand /></View>
+    <View style={styles.page}>
+      <AppHeader back />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
       <View style={styles.shell}>
         <View style={styles.heading}>
           <Text style={styles.kicker}>{role === 'admin' ? 'SCHOOL ADMINISTRATION' : 'STUDENT WORKSPACE'}</Text>
@@ -60,13 +61,15 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
         </Pressable>
         <Text style={styles.help}>Your app and website always use the same live account.</Text>
       </View>
-    </Page>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  top: { width: '100%', maxWidth: 760, paddingHorizontal: 18, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  shell: { width: '90%', maxWidth: 480, marginTop: 10, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 28, padding: 24, gap: 16, elevation: 5, shadowColor: colors.ink, shadowOpacity: 0.1, shadowRadius: 20 },
+  page: { flex: 1, backgroundColor: colors.cream },
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 36 },
+  shell: { width: '100%', maxWidth: 480, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 28, padding: 24, gap: 16, elevation: 5, shadowColor: colors.ink, shadowOpacity: 0.1, shadowRadius: 20 },
   heading: { gap: 8 },
   kicker: { color: colors.brown, fontSize: 11, fontWeight: '900', letterSpacing: 1.8 },
   title: { fontSize: 38, lineHeight: 43, fontWeight: '900', color: colors.ink },
