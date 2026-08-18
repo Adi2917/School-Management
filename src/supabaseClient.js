@@ -6,6 +6,7 @@ export const setApiToken = (token) => {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
 };
+export const getApiSubject = () => { try { const token=localStorage.getItem(TOKEN_KEY); return token ? JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"))).subject || "" : ""; } catch { return ""; } };
 
 export async function authLogin(role, credentials) {
   const response = await fetch(`${API_URL}/auth/${role}/login`, {
@@ -34,7 +35,7 @@ class QueryBuilder {
   insert(value) { this.action = "insert"; this.payload = value; return this; }
   update(value) { this.action = "update"; this.payload = value; return this; }
   delete() { this.action = "delete"; return this; }
-  eq(field, value) { this.filters.push([field, value]); return this; }
+  eq(field, value) { const resolved = ["id","student_id"].includes(field) && (!value || value === "undefined") ? getApiSubject() : value; if (resolved !== undefined && resolved !== "undefined" && resolved !== "") this.filters.push([field, resolved]); return this; }
   order(field, options = {}) { this.sort = [field, options.ascending === false ? "desc" : "asc"]; return this; }
   single() { this.one = true; return this; }
   async execute() {

@@ -14,6 +14,8 @@ function withoutPin<T extends School | Student>(user: T): T {
   return safeUser;
 }
 
+function tokenSubject(token: string) { try { const payload=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'); return String(JSON.parse(globalThis.atob(payload)).subject || ''); } catch { return ''; } }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,8 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!saved?.token || !saved?.user || !['admin', 'student'].includes(saved.role)) {
       return SecureStore.deleteItemAsync(KEY);
     }
-    setAccessToken(saved.token);
-    setSession(saved);
+    const normalized = saved.role === 'student' && !(saved.user as Student).id ? { ...saved, user: { ...saved.user, id: tokenSubject(saved.token) } } as Session : saved;
+    setAccessToken(normalized.token);
+    setSession(normalized);
   }).catch(() => SecureStore.deleteItemAsync(KEY)).finally(() => setLoading(false)); }, []);
   const signIn = useCallback(async (value: Session) => {
     if (!value?.token || !value?.user || !['admin', 'student'].includes(value.role)) throw new Error('Invalid login session. Please try again.');

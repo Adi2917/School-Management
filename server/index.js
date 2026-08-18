@@ -115,7 +115,7 @@ app.post("/api/auth/student/request-pin-reset", async (req, res, next) => {
     if (!student) return res.status(404).json({ message: "No student matches these registered details" });
     const otp = String(crypto.randomInt(1000, 10000));
     await modelFor("pin_reset_otps").deleteMany({ student_id: student.id });
-    await modelFor("pin_reset_otps").create({ id: crypto.randomUUID(), student_id: student.id, school_code: schoolCode, digest: otpDigest(otp), expires_at: new Date(Date.now() + 10 * 60 * 1000), attempts: 0 });
+    await modelFor("pin_reset_otps").create({ id: crypto.randomUUID(), student_id: student.id, school_code: schoolCode, digest: otpDigest(otp), expires_at: new Date(Date.now() + 5 * 60 * 1000), attempts: 0 });
     const school = await modelFor("schools").findOne({ school_code: schoolCode }).lean();
     await sendStudentPinOtp({ to: email, otp, studentName: student.name, schoolName: school?.school_name });
     res.json({ data: { sent: true, masked_email: email.replace(/(^.).*(@.*$)/, "$1***$2") } });

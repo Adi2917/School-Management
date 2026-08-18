@@ -83,10 +83,9 @@ export const authenticate = async ({ role, pin, record, Model }) => {
     ? await verifyPin(pin, record[hashField])
     : Boolean(record?.[legacyField] && String(record[legacyField]) === String(pin));
   if (!valid) return null;
-  if (!record[hashField]) {
-    await Model.updateOne({ _id: record._id }, { $set: { [hashField]: await hashPin(pin) }, $unset: { [legacyField]: "" } });
-  }
-  const safe = sanitizeRecord(record);
+  if (!record[hashField]) await Model.updateOne({ _id: record._id }, { $set: { [hashField]: await hashPin(pin) }, $unset: { [legacyField]: "" } });
+  const safeRaw = sanitizeRecord(record);
+  const safe = { id: safeRaw.id || safeRaw._id?.toString(), ...safeRaw };
   return {
     token: issueToken({ role, subject: safe.id || safe._id?.toString(), school_code: safe.school_code }),
     user: safe,

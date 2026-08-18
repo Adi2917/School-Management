@@ -122,7 +122,7 @@ export default async function handler(request) {
       const Student=modelFor("students"); const student=await Student.findOne({school_code:String(body.school_code||"").trim(),number:String(body.number||"").trim(),email}).lean();
       if(!student) return json({message:"No student matches these registered details"},404);
       const otp=String(crypto.randomInt(1000,10000)); const Otp=modelFor("pin_reset_otps"); await Otp.deleteMany({student_id:student.id});
-      await Otp.create({id:crypto.randomUUID(),student_id:student.id,school_code:student.school_code,digest:otpDigest(otp),expires_at:new Date(Date.now()+600000),attempts:0});
+      await Otp.create({id:crypto.randomUUID(),student_id:student.id,school_code:student.school_code,digest:otpDigest(otp),expires_at:new Date(Date.now()+300000),attempts:0});
       const school=await modelFor("schools").findOne({school_code:student.school_code}).lean(); await sendStudentPinOtp({to:email,otp,studentName:student.name,schoolName:school?.school_name});
       return json({data:{sent:true,masked_email:email.replace(/(^.).*(@.*$)/,"$1***$2")}});
     }
