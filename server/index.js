@@ -117,7 +117,12 @@ app.post("/api/auth/student/request-pin-reset", async (req, res, next) => {
     await modelFor("pin_reset_otps").deleteMany({ student_id: student.id });
     await modelFor("pin_reset_otps").create({ id: crypto.randomUUID(), student_id: student.id, school_code: schoolCode, digest: otpDigest(otp), expires_at: new Date(Date.now() + 5 * 60 * 1000), attempts: 0 });
     const school = await modelFor("schools").findOne({ school_code: schoolCode }).lean();
-    await sendStudentPinOtp({ to: email, otp, studentName: student.name, schoolName: school?.school_name });
+    try {
+      await sendStudentPinOtp({ to: email, otp, studentName: student.name, schoolName: school?.school_name, adminEmail: school?.admin_email || school?.email });
+    } catch (mailError) {
+      await modelFor("pin_reset_otps").deleteMany({ student_id: student.id });
+      throw mailError;
+    }
     res.json({ data: { sent: true, masked_email: email.replace(/(^.).*(@.*$)/, "$1***$2") } });
   } catch (error) { next(error); }
 });
@@ -174,7 +179,7 @@ app.patch("/api/:collection", guard, async (req, res, next) => { try { const fil
 app.delete("/api/:collection", guard, async (req, res, next) => { try { const Model=modelFor(req.params.collection); const filter=filterFrom(req.query); const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(req,req.params.collection,targets))) return res.status(403).json({ message:"You are not allowed to delete these records" }); const result=await Model.deleteMany(filter); await mirrorCollection(req.params.collection,Model); res.json({ data:result }); } catch (error) { next(error); } });
 // Express identifies error middleware by its four-argument signature.
 // eslint-disable-next-line no-unused-vars
-app.use((error, _req, res, _next) => res.status(500).json({ message: error.message }));
+app.use((error, _req, res, _next) => res.status(Number(error.statusCode) || 500).json({ message: error.message }));
 
 let connectionPromise;
 export function connectDatabase() {

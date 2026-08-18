@@ -123,7 +123,9 @@ export default async function handler(request) {
       if(!student) return json({message:"No student matches these registered details"},404);
       const otp=String(crypto.randomInt(1000,10000)); const Otp=modelFor("pin_reset_otps"); await Otp.deleteMany({student_id:student.id});
       await Otp.create({id:crypto.randomUUID(),student_id:student.id,school_code:student.school_code,digest:otpDigest(otp),expires_at:new Date(Date.now()+300000),attempts:0});
-      const school=await modelFor("schools").findOne({school_code:student.school_code}).lean(); await sendStudentPinOtp({to:email,otp,studentName:student.name,schoolName:school?.school_name});
+      const school=await modelFor("schools").findOne({school_code:student.school_code}).lean();
+      try { await sendStudentPinOtp({to:email,otp,studentName:student.name,schoolName:school?.school_name,adminEmail:school?.admin_email||school?.email}); }
+      catch(mailError){await Otp.deleteMany({student_id:student.id});throw mailError;}
       return json({data:{sent:true,masked_email:email.replace(/(^.).*(@.*$)/,"$1***$2")}});
     }
     if (route[0] === "auth" && route[1] === "student" && route[2] === "reset-pin" && request.method === "POST") {
@@ -182,5 +184,5 @@ export default async function handler(request) {
     if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); if(collection==="students"&&rawChanges.pin!==undefined)return json({message:bearerClaims(request.headers)?.role==="admin"?"Admins cannot save or reset a student PIN":"Use email OTP to reset your PIN"},403); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); await mirrorCollection(collection, Model); return json({ data: records }); }
     if (request.method === "DELETE") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to delete these records" },403); const result = await Model.deleteMany(filter); await mirrorCollection(collection, Model); return json({ data: result }); }
     return json({ message: "Method not allowed" }, 405);
-  } catch (error) { return json({ message: error.message }, 500); }
+  } catch (error) { return json({ message: error.message }, Number(error.statusCode) || 500); }
 }

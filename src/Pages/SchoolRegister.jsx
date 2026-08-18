@@ -134,8 +134,8 @@ export default function SchoolRegister() {
         </div>
       )}
 
-      <div className="register-card">
-        <h2>School Registration</h2>
+      <div className="register-card school-register-card">
+        <div className="registration-heading"><span>CREATE YOUR SCHOOL WORKSPACE</span><h2>School Registration</h2><p>Add school details and set the fee structure once. You can edit it later from the admin profile.</p></div>
 
         <form onSubmit={handleSubmit}>
           <input
@@ -178,18 +178,18 @@ export default function SchoolRegister() {
             onChange={handleChange}
             required
           />
-          <textarea
+          <textarea className="form-wide"
             name="location"
             placeholder="School Address / Location"
             onChange={handleChange}
             required
           />
           <div className="school-fee-setup"><h3>Monthly Fee Structure</h3><p>Set the default monthly fee once for Nursery through Class 10.</p>{classes.map(item => <label key={item}><span>{["Nursery","LKG","UKG"].includes(item) ? item : `Class ${item}`}</span><input inputMode="numeric" placeholder="Amount ₹" value={monthlyFees[item]} onChange={event => setMonthlyFees(current => ({...current,[item]:event.target.value.replace(/\D/g,"")}))} required/></label>)}</div>
-          <input
+          <label className="logo-upload"><b>School logo</b><small>JPG, PNG or WebP</small><input
             type="file"
             accept="image/*"
             onChange={handleLogoChange}
-          />
+          /></label>
 
           <button type="submit" disabled={loading}>
             {loading ? "Registering..." : "Register"}
