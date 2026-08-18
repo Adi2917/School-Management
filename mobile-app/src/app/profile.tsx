@@ -5,7 +5,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { AppHeader, Avatar, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
-import { api, mediaUrl, School, Student } from '@/lib/api';
+import { api, compressImage, mediaUrl, School, Student, type ExamFee } from '@/lib/api';
+
+const CLASSES = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
 export default function ProfileScreen() {
   const { studentId } = useLocalSearchParams<{ studentId?: string }>();
@@ -18,6 +20,11 @@ export default function ProfileScreen() {
   const [busy, setBusy] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
+  const [monthlyFees, setMonthlyFees] = useState<Record<string, string>>({});
+  const [examFees, setExamFees] = useState<ExamFee[]>([]);
+  const [examName, setExamName] = useState('');
+  const [examType, setExamType] = useState('');
+  const [examAmounts, setExamAmounts] = useState<Record<string, string>>({});
 
   const load = async () => {
     if (!session) return router.replace('/');
@@ -28,6 +35,8 @@ export default function ProfileScreen() {
         targetId ? api.getStudent(targetId) : Promise.resolve(null),
       ]);
       setSchool(schoolRecord);
+      setMonthlyFees(Object.fromEntries(CLASSES.map(item => [item, String(schoolRecord?.monthly_fees?.[item] ?? '')])));
+      setExamFees(schoolRecord?.exam_fees || []);
       setStudent(studentRecord);
       const source = studentRecord || schoolRecord;
       if (source) setForm(Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value == null ? '' : String(value)])));
@@ -45,14 +54,14 @@ export default function ProfileScreen() {
     const id = student?.id || school?.id;
     if (!id) return;
     const isStudent = Boolean(student);
-    if (form.new_pin && !new RegExp(`^\\d{${isStudent ? 4 : 6}}$`).test(form.new_pin)) {
-      return Alert.alert('Invalid PIN', `PIN must be ${isStudent ? 4 : 6} digits.`);
+    if (!isStudent && form.new_pin && !/^\d{6}$/.test(form.new_pin)) {
+      return Alert.alert('Invalid PIN', 'Admin PIN must be 6 digits.');
     }
     setSaving(true);
     try {
       const fields = isStudent
-        ? { name: form.name, father_name: form.father_name, number: form.number, address: form.address, class: form.class, section: form.section, roll: form.roll, photo_url: form.photo_url, ...(form.new_pin ? { pin: form.new_pin } : {}) }
-        : { school_name: form.school_name, admin_name: form.admin_name, admin_email: form.admin_email, phone: form.phone, location: form.location, school_logo: form.school_logo, ...(form.new_pin ? { admin_pin: form.new_pin } : {}) };
+        ? { name: form.name, father_name: form.father_name, number: form.number, email: form.email, address: form.address, class: form.class, section: form.section, roll: form.roll, photo_url: form.photo_url }
+        : { school_name: form.school_name, admin_name: form.admin_name, admin_email: form.admin_email, phone: form.phone, location: form.location, school_logo: form.school_logo, monthly_fees: Object.fromEntries(CLASSES.map(item => [item, Number(monthlyFees[item] || 0)])), exam_fees: examFees, ...(form.new_pin ? { admin_pin: form.new_pin } : {}) };
       const updated = await api.updateRecord<Student | School>(isStudent ? 'students' : 'schools', id, fields);
       const next = updated[0];
       if (next && ((!studentId && session?.role === 'student') || editingSchool)) await updateUser(next);
@@ -74,7 +83,8 @@ export default function ProfileScreen() {
     setSaving(true);
     try {
       const asset = result.assets[0];
-      const uploaded = await api.uploadFile(asset.uri, asset.fileName || 'profile.jpg', asset.mimeType || 'image/jpeg');
+      const compressed = await compressImage(asset.uri);
+      const uploaded = await api.uploadFile(compressed, 'profile.jpg', 'image/jpeg');
       change(student ? 'photo_url' : 'school_logo', uploaded.url);
     } catch (error) {
       Alert.alert('Upload failed', error instanceof Error ? error.message : 'Please retry.');
@@ -96,6 +106,11 @@ export default function ProfileScreen() {
 
   if (!session) return null;
   const displayName = student?.name || school?.school_name || 'Profile';
+  const addExamFee = () => {
+    if (!examName.trim() || !examType.trim() || CLASSES.some(item => !examAmounts[item])) return Alert.alert('Complete exam fee', 'Enter exam name, type and amount for every class.');
+    setExamFees(current => [...current, { id: `${Date.now()}`, name: examName.trim(), type: examType.trim(), class_amounts: Object.fromEntries(CLASSES.map(item => [item, Number(examAmounts[item])])) }]);
+    setExamName(''); setExamType(''); setExamAmounts({});
+  };
 
   return (
     <View style={styles.page}>
@@ -129,6 +144,7 @@ export default function ProfileScreen() {
                     <Field label="Roll" value={form.roll} onChangeText={value => change('roll', value)} compact />
                   </View>
                   <Field label="Phone" value={form.number} onChangeText={value => change('number', value)} keyboardType="phone-pad" />
+                  <Field label="Registered email" value={form.email} onChangeText={value => change('email', value.trim().toLowerCase())} keyboardType="email-address" autoCapitalize="none" />
                   <Field label="Address" value={form.address} onChangeText={value => change('address', value)} />
                 </>
               ) : (
@@ -138,20 +154,22 @@ export default function ProfileScreen() {
                   <Field label="Admin email" value={form.admin_email || form.email} onChangeText={value => change('admin_email', value)} keyboardType="email-address" />
                   <Field label="Phone" value={form.phone} onChangeText={value => change('phone', value)} keyboardType="phone-pad" />
                   <Field label="Location" value={form.location} onChangeText={value => change('location', value)} />
+                  <View style={styles.configBox}><Text style={styles.configTitle}>MONTHLY FEES BY CLASS</Text>{CLASSES.map(item => <View key={item} style={styles.configRow}><Text style={styles.configLabel}>{['Nursery','LKG','UKG'].includes(item) ? item : `Class ${item}`}</Text><TextInput style={styles.amountInput} value={monthlyFees[item]} onChangeText={value => setMonthlyFees(current => ({...current,[item]:value.replace(/\D/g,'')}))} keyboardType="number-pad" placeholder="₹ amount" placeholderTextColor="#948b80"/></View>)}</View>
+                  <View style={styles.configBox}><Text style={styles.configTitle}>EXAM FEE SETUP</Text><Field label="Exam name" value={examName} onChangeText={setExamName}/><Field label="Exam type" value={examType} onChangeText={setExamType}/>{CLASSES.map(item => <View key={item} style={styles.configRow}><Text style={styles.configLabel}>{['Nursery','LKG','UKG'].includes(item) ? item : `Class ${item}`}</Text><TextInput style={styles.amountInput} value={examAmounts[item] || ''} onChangeText={value => setExamAmounts(current => ({...current,[item]:value.replace(/\D/g,'')}))} keyboardType="number-pad" placeholder="₹ amount" placeholderTextColor="#948b80"/></View>)}<Pressable style={styles.addFee} onPress={addExamFee}><Text style={styles.addFeeText}>Add exam fee</Text></Pressable>{examFees.map(item => <View key={item.id} style={styles.examFeeCard}><View style={styles.flex}><Text style={styles.examFeeName}>{item.name}</Text><Text style={styles.examFeeType}>{item.type}</Text></View><Pressable onPress={() => setExamFees(current => current.filter(fee => fee.id !== item.id))}><Text style={styles.removeFee}>Remove</Text></Pressable></View>)}</View>
                 </>
               )}
-              <Field
-                label={`New ${student ? '4' : '6'}-digit PIN (leave blank to keep current)`}
+              {!student && <Field
+                label="New 6-digit admin PIN (leave blank to keep current)"
                 value={form.new_pin}
-                onChangeText={value => change('new_pin', value.replace(/\D/g, '').slice(0, student ? 4 : 6))}
+                onChangeText={value => change('new_pin', value.replace(/\D/g, '').slice(0, 6))}
                 keyboardType="number-pad"
                 secureTextEntry
-              />
+              />}
             </View>
             <Pressable disabled={saving} style={[styles.save, saving && styles.disabled]} onPress={save}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save changes</Text>}
             </Pressable>
-            <Text style={styles.safe}>Your current PIN stays private. Enter a new PIN only when you want to change it.</Text>
+            <Text style={styles.safe}>{student ? 'Student PIN changes are protected by email OTP from the login screen.' : 'Your current PIN stays private. Enter a new PIN only when you want to change it.'}</Text>
           </View>
         )}
       </ScrollView>
@@ -193,6 +211,7 @@ const styles = StyleSheet.create({
   fields: { width: '100%', gap: 12, marginTop: 8 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   field: { width: '100%', gap: 6 },
+  configBox: { width:'100%', gap:10, padding:14, borderRadius:18, backgroundColor:colors.goldSoft }, configTitle:{color:colors.brown,fontWeight:'900',letterSpacing:1.2,fontSize:11}, configRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:colors.paper,padding:10,borderRadius:12}, configLabel:{flex:1,color:colors.ink,fontWeight:'800'}, amountInput:{width:120,minHeight:44,borderWidth:1,borderColor:colors.line,borderRadius:10,paddingHorizontal:10,color:colors.ink,backgroundColor:'#fbf7ef'}, addFee:{backgroundColor:colors.ink,borderRadius:12,padding:14},addFeeText:{color:'#fff',fontWeight:'900',textAlign:'center'},examFeeCard:{flexDirection:'row',alignItems:'center',backgroundColor:colors.paper,borderRadius:12,padding:12},flex:{flex:1},examFeeName:{fontWeight:'900',color:colors.ink},examFeeType:{color:colors.muted,fontSize:12,marginTop:3},removeFee:{color:colors.danger,fontWeight:'900'},
   compactField: { flex: 1, minWidth: 88 },
   label: { color: colors.ink, fontWeight: '800', fontSize: 12 },
   input: { minHeight: 52, backgroundColor: '#fbf7ef', borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink, fontSize: 15 },

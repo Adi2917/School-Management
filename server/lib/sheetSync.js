@@ -2,12 +2,12 @@
 import { google } from "googleapis";
 
 export const SHEET_DEFINITIONS = {
-  schools: ["id", "school_code", "school_name", "admin_name", "email", "phone", "location", "school_logo", "created_at", "updated_at"],
-  students: ["id", "school_code", "school_name", "name", "father_name", "number", "class", "section", "roll", "address", "photo_url", "created_at", "updated_at"],
-  fees: ["id", "student_id", "school_code", "month", "status", "paid_date", "created_at", "updated_at"],
+  schools: ["id", "school_code", "school_name", "admin_name", "email", "phone", "location", "school_logo", "monthly_fees", "exam_fees", "created_at", "updated_at"],
+  students: ["id", "school_code", "school_name", "name", "father_name", "number", "email", "class", "section", "roll", "address", "photo_url", "created_at", "updated_at"],
+  fees: ["id", "student_id", "school_code", "fee_type", "exam_fee_id", "title", "month", "amount", "due_amount", "status", "paid_at", "created_at", "updated_at"],
   notifications: ["id", "school_code", "student_id", "tittle", "message", "image_url", "file_url", "media_type", "created_at", "updated_at"],
   exam_types: ["id", "school_code", "name", "created_at", "updated_at"],
-  results: ["id", "student_id", "school_code", "exam_type_id", "subject", "marks", "max_marks", "created_at", "updated_at"],
+  results: ["id", "student_id", "school_code", "exam_type_id", "exam_name", "subject", "marks", "obtained_marks", "full_marks", "created_at", "updated_at"],
 };
 
 const TAB_NAMES = {
@@ -142,7 +142,13 @@ const valuesToDocuments = (values, collection) => {
   if (columns.some((column, index) => String(values[0][index] || "") !== column)) throw new Error(`${TAB_NAMES[collection]} header row was changed`);
   return values.slice(1)
     .filter(row => row.some(cell => String(cell || "").trim()))
-    .map(row => Object.fromEntries(columns.map((column, index) => [column, row[index] ?? ""])))
+    .map(row => Object.fromEntries(columns.map((column, index) => {
+      const value = row[index] ?? "";
+      if (["monthly_fees", "exam_fees"].includes(column) && typeof value === "string" && value.trim()) {
+        try { return [column, JSON.parse(value)]; } catch { return [column, column === "exam_fees" ? [] : {}]; }
+      }
+      return [column, value];
+    })))
     .filter(document => document.id);
 };
 

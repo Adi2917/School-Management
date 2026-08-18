@@ -13,6 +13,11 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [resetMode, setResetMode] = useState(false);
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const { signIn } = useAuth();
 
   const digits = (value: string, max: number) => value.replace(/\D/g, '').slice(0, max);
@@ -37,6 +42,24 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
     }
   };
 
+  const requestOtp = async () => {
+    setError('');
+    if (code.length !== 6 || phone.length !== 10 || !/^\S+@\S+\.\S+$/.test(email)) return setError('Enter your school code, phone and registered email.');
+    setBusy(true);
+    try { await api.requestStudentPinReset(code, phone, email); setOtpSent(true); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not send OTP.'); }
+    finally { setBusy(false); }
+  };
+
+  const resetPin = async () => {
+    setError('');
+    if (otp.length !== 4 || newPin.length !== 4) return setError('Enter the 4-digit OTP and a new 4-digit PIN.');
+    setBusy(true);
+    try { await api.resetStudentPin(code, phone, email, otp, newPin); setResetMode(false); setOtpSent(false); setOtp(''); setNewPin(''); setPin(''); setError('PIN reset complete. You can now log in.'); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not reset PIN.'); }
+    finally { setBusy(false); }
+  };
+
   return (
     <View style={styles.page}>
       <AppHeader back />
@@ -50,11 +73,13 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
         <View style={styles.form}>
           <Field label="6-digit school code" value={code} onChangeText={(value) => setCode(digits(value, 6))} keyboardType="number-pad" maxLength={6} />
           {role === 'student' && <Field label="Registered phone number" value={phone} onChangeText={(value) => setPhone(digits(value, 10))} keyboardType="phone-pad" maxLength={10} />}
-          <Field label={`${role === 'admin' ? '6' : '4'}-digit PIN`} value={pin} onChangeText={(value) => setPin(digits(value, role === 'admin' ? 6 : 4))} keyboardType="number-pad" secureTextEntry maxLength={role === 'admin' ? 6 : 4} onSubmitEditing={login} />
+          {!resetMode && <Field label={`${role === 'admin' ? '6' : '4'}-digit PIN`} value={pin} onChangeText={(value) => setPin(digits(value, role === 'admin' ? 6 : 4))} keyboardType="number-pad" secureTextEntry maxLength={role === 'admin' ? 6 : 4} onSubmitEditing={login} />}
+          {resetMode && <><Field label="Registered email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />{otpSent && <><Field label="4-digit OTP" value={otp} onChangeText={value => setOtp(digits(value, 4))} keyboardType="number-pad" maxLength={4}/><Field label="New 4-digit PIN" value={newPin} onChangeText={value => setNewPin(digits(value, 4))} keyboardType="number-pad" secureTextEntry maxLength={4}/></>}</>}
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          <Pressable disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={login}>
+          <Pressable disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={resetMode ? (otpSent ? resetPin : requestOtp) : login}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Open dashboard  →</Text>}
           </Pressable>
+          {role === 'student' && <Pressable onPress={() => { setResetMode(value => !value); setOtpSent(false); setError(''); }}><Text style={styles.resetLink}>{resetMode ? 'Back to student login' : 'Forgot PIN? Reset with email OTP'}</Text></Pressable>}
         </View>
         <Pressable onPress={() => router.push((role === 'admin' ? '/school-register' : '/student-register') as never)}>
           <Text style={styles.register}>{role === 'admin' ? 'New school? Register here' : 'New student? Register here'}</Text>
@@ -80,5 +105,6 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.65 },
   buttonText: { color: '#fff', textAlign: 'center', fontWeight: '900', fontSize: 16 },
   register: { color: colors.brown, textAlign: 'center', fontWeight: '900', paddingVertical: 2 },
+  resetLink: { color: colors.brown, textAlign: 'center', fontWeight: '800', paddingVertical: 4 },
   help: { color: colors.muted, textAlign: 'center', fontSize: 12 },
 });

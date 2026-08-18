@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, Avatar, Skeleton } from '@/components/ui';
@@ -57,11 +57,11 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
     }
   }, [recordId, role, schoolCode, sessionRole, sessionUser, updateUser]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (loading) return;
     if (!session || session.role !== role) { router.replace('/'); return; }
     void refresh(false);
-  }, [loading, role, sessionRole]);
+  }, [loading, role, sessionRole, refresh]));
 
   if (loading || !session || session.role !== role) return <View style={styles.boot}><Skeleton width={210} height={18} /><Skeleton width="88%" height={128} radius={24} /></View>;
 
