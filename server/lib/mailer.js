@@ -1,11 +1,11 @@
 /* global process */
 import nodemailer from "nodemailer";
 
-const platformEmail = process.env.SMTP_USER || "adhyetaclasses1729@gmail.com";
+const platformEmail = process.env.SMTP_USER;
 
 const transporter = () => {
-  if (!process.env.SMTP_PASS) {
-    const error = new Error("Connect Your School OTP mailbox needs its App Password");
+  if (!platformEmail || !process.env.SMTP_PASS) {
+    const error = new Error("Connect Your School OTP mailbox is not configured");
     error.statusCode = 503;
     throw error;
   }
