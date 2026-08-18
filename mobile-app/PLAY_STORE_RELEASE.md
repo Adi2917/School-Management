@@ -14,9 +14,9 @@
 Run these inside `mobile-app`:
 
 ```powershell
-npx eas-cli login
-npx eas-cli build --platform android --profile preview
-npx eas-cli build --platform android --profile production
+npx.cmd eas-cli login
+npx.cmd eas-cli build --platform android --profile preview
+npx.cmd eas-cli build --platform android --profile production
 ```
 
 The preview profile creates an APK. Test admin/student login, profile image, fees, results and notices on a real phone. The production profile creates the AAB for Play Console.
