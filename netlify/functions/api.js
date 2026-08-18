@@ -19,7 +19,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), { status
 const normalize = value => { const { _id, ...rest } = value; return sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); };
 const uniqueFilter = (collection, item) => {
   if (collection === "schools") return { school_code: item.school_code };
-  if (collection === "students") return { school_code: item.school_code, number: item.number };
+  if (collection === "students") return { email: String(item.email || "").trim().toLowerCase() };
   if (collection === "fees") return item.fee_type === "exam" ? { student_id: item.student_id, fee_type: "exam", exam_fee_id: item.exam_fee_id } : { student_id: item.student_id, fee_type: item.fee_type || "monthly", month: item.month };
   if (collection === "results") return { student_id: item.student_id, exam_type_id: item.exam_type_id, subject: item.subject };
   if (collection === "exam_types") return { name: item.name, school_code: item.school_code };
@@ -110,9 +110,9 @@ export default async function handler(request) {
       const filter = role === "admin"
         ? { school_code: String(body.school_code || "").trim(), ...(normalizedEmail ? { $or: [{ email: normalizedEmail }, { admin_email: normalizedEmail }] } : {}) }
         : { school_code: String(body.school_code || "").trim(), number: String(body.number || "").trim() };
-      const record = await Model.findOne(filter);
-      if (!record) return json({ message: "Invalid login details" }, 401);
-      const auth = await authenticate({ role, pin: String(body.pin || ""), record, Model });
+      const records = role === "student" ? await Model.find(filter) : [await Model.findOne(filter)];
+      let auth = null;
+      for (const record of records) { auth = await authenticate({ role, pin: String(body.pin || ""), record, Model }); if (auth) break; }
       if (!auth) return json({ message: "Invalid login details" }, 401);
       await mirrorCollection(role === "admin" ? "schools" : "students", Model);
       return json({ data: auth });
@@ -160,6 +160,7 @@ export default async function handler(request) {
     if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
     if (request.method === "POST") {
       const body = await request.json(); const rawItems = Array.isArray(body) ? body : [body];
+      if (collection === "students") { for (const item of rawItems) { const email=String(item.email||"").trim().toLowerCase(); if(email && await Model.exists({email})) return json({message:"This email is already registered to a student"},409); item.email=email; } }
       if (!(await authorizeMutation(request, collection, rawItems))) return json({ message: "You are not allowed to change these records" }, 403);
       for (const item of rawItems) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
       const items = await Promise.all(rawItems.map(async item => ({ ...(await protectCredentials(collection, item)), sheet_managed: false }))); const saved = [];
