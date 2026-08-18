@@ -12,6 +12,7 @@ export default function StudentRegister() {
     name: "",
     father_name: "",
     phone: "",
+    email: "",
     school_code: "",
     class: "",
     section: "",
@@ -90,22 +91,12 @@ export default function StudentRegister() {
 
     setLoading(true);
 
-    const [{ data: matchingSchool }, { data: existingStudent }] = await Promise.all([
-      supabase.from("schools").select("*").eq("school_code", form.school_code).single(),
-      supabase.from("students").select("*").eq("school_code", form.school_code).eq("number", form.phone).single(),
-    ]);
+    const { data: matchingSchool } = await supabase.from("schools").select("*").eq("school_code", form.school_code).single();
 
     if (!matchingSchool) {
       setLoading(false);
       return showPopup("error", "School code not found");
     }
-    const alreadyExists = Boolean(existingStudent);
-
-    if (alreadyExists) {
-      setLoading(false);
-      return showPopup("error", "Student already registered for this school");
-    }
-
     try {
       const imageDataUrl = imageFile ? await uploadMedia(imageFile) : "";
 
@@ -114,6 +105,7 @@ export default function StudentRegister() {
         name: form.name,
         father_name: form.father_name,
         number: form.phone,
+        email: form.email.trim().toLowerCase(),
         school_code: form.school_code,
         school_name: matchingSchool.school_name,
         school_logo: matchingSchool.school_logo || "",
@@ -173,6 +165,7 @@ export default function StudentRegister() {
           <input name="name" placeholder="Student Name" onChange={handleChange} required />
           <input name="father_name" placeholder="Father's Name" onChange={handleChange} required />
           <input name="phone" placeholder="Phone (10 digit)" value={form.phone} onChange={handleChange} required />
+          <input type="email" name="email" placeholder="Registered Email (for secure PIN reset)" value={form.email} onChange={handleChange} required />
           <input
             name="school_code"
             placeholder="School Code"

@@ -19,6 +19,15 @@ export async function authLogin(role, credentials) {
   return body.data?.user;
 }
 
+async function authAction(path, payload) {
+  const response = await fetch(`${API_URL}/auth/student/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || "Request failed");
+  return body.data;
+}
+export const requestStudentPinReset = payload => authAction("request-pin-reset", payload);
+export const resetStudentPin = payload => authAction("reset-pin", payload);
+
 class QueryBuilder {
   constructor(collection) { this.collection = collection; this.filters = []; this.action = "select"; this.payload = null; this.one = false; }
   select(fields = "*") { this.fields = fields; return this; }

@@ -136,3 +136,4 @@
     opacity: 1;
   }
 }
+.school-fee-setup{display:grid;gap:10px;padding:18px;border:1px solid #eadcc7;border-radius:18px;background:#fff8e8}.school-fee-setup h3{margin:0;color:#242018}.school-fee-setup p{margin:0;color:#746b60}.school-fee-setup label{display:flex;align-items:center;gap:12px}.school-fee-setup label span{flex:1;font-weight:800}.school-fee-setup label input{width:150px;margin:0}

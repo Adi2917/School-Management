@@ -4,7 +4,7 @@ import { supabase } from "../supabaseClient";
 import { BookOpenCheck, ChevronDown, FilePenLine, Plus, Trash2 } from "lucide-react";
 import "./AdminStudentResult.css";
 
-const defaultSubjects = ["Maths", "Hindi", "English", "Science", "SSt", "Computer", "GK"];
+const defaultSubjects = ["English", "Hindi", "Maths", "Computer", "GK", "Science", "Social Studies"];
 
 export default function AdminStudentResult() {
   const { studentId } = useParams();
@@ -46,7 +46,7 @@ export default function AdminStudentResult() {
   const selectExam = exam => {
     const rows = allResults.filter(row => row.exam_type_id === exam.id);
     const obtained = {}, full = {};
-    rows.forEach(row => { obtained[row.subject] = row.marks; full[row.subject] = row.max_marks || 100; });
+    rows.forEach(row => { obtained[row.subject] = row.obtained_marks ?? row.marks; full[row.subject] = row.full_marks ?? row.max_marks ?? 100; });
     setSelectedExam(exam.id); setMarks(obtained); setMaxMarks(full);
     setSubjects(rows.length ? [...new Set([...defaultSubjects, ...rows.map(row => row.subject)])] : defaultSubjects);
     setMenuOpen(false);
@@ -56,7 +56,8 @@ export default function AdminStudentResult() {
     if (!selectedExam) return alert("Select an examination first");
     if (subjects.some(subject => Number(marks[subject] ?? 0) > Number(maxMarks[subject] || 100))) return alert("Obtained marks cannot exceed full marks");
     setSaving(true);
-    const rows = subjects.map(subject => ({ student_id: studentId, exam_type_id: selectedExam, subject, marks: Number(marks[subject] ?? 0), max_marks: Number(maxMarks[subject] || 100), school_code: student.school_code }));
+    const examName=examTypes.find(item=>item.id===selectedExam)?.name||"Examination";
+    const rows = subjects.map(subject => ({ student_id: studentId, exam_type_id: selectedExam, exam_name:examName, subject, marks: Number(marks[subject] ?? 0), obtained_marks:Number(marks[subject]??0), max_marks: Number(maxMarks[subject] || 100), full_marks:Number(maxMarks[subject]||100), school_code: student.school_code }));
     const { error: deleteError } = await supabase.from("results").delete().eq("student_id", studentId).eq("exam_type_id", selectedExam).eq("school_code", student.school_code);
     const { error } = deleteError ? { error: deleteError } : await supabase.from("results").insert(rows);
     setSaving(false);

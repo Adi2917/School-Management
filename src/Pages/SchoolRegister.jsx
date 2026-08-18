@@ -6,6 +6,8 @@ import EducationPanel from "../Components/EducationPanel";
 import { saveSession } from "../session";
 import "./StudentRegister.css";
 
+const classes = ["Nursery","LKG","UKG","1","2","3","4","5","6","7","8","9","10"];
+
 const syncSchoolRegistry = (school) => {
   const current = JSON.parse(localStorage.getItem("schoolRegistry") || "[]");
   const updated = current.filter((item) => item.school_code !== school.school_code);
@@ -26,6 +28,7 @@ export default function SchoolRegister() {
     location: "",
   });
   const [schoolLogo, setSchoolLogo] = useState(null);
+  const [monthlyFees, setMonthlyFees] = useState(Object.fromEntries(classes.map(item => [item, ""])));
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({
     show: false,
@@ -77,6 +80,7 @@ export default function SchoolRegister() {
     if (form.admin_pin.length !== 6) {
       return showPopup("error", "Admin pin must be 6 digits");
     }
+    if (classes.some(item => monthlyFees[item] === "" || Number(monthlyFees[item]) < 0)) return showPopup("error", "Enter monthly fee for every class");
 
     setLoading(true);
 
@@ -91,7 +95,7 @@ export default function SchoolRegister() {
 
     try {
       const uploadedLogo = schoolLogo ? await uploadMedia(schoolLogo) : "";
-      const payload = { ...form, school_logo: uploadedLogo, created_at: new Date().toISOString() };
+      const payload = { ...form, admin_email: form.email.trim().toLowerCase(), email: form.email.trim().toLowerCase(), school_logo: uploadedLogo, monthly_fees: Object.fromEntries(classes.map(item => [item, Number(monthlyFees[item])])), exam_fees: [], created_at: new Date().toISOString() };
       const { error } = await supabase.from("schools").insert([payload]);
 
       if (!error) {
@@ -180,6 +184,7 @@ export default function SchoolRegister() {
             onChange={handleChange}
             required
           />
+          <div className="school-fee-setup"><h3>Monthly Fee Structure</h3><p>Set the default monthly fee once for Nursery through Class 10.</p>{classes.map(item => <label key={item}><span>{["Nursery","LKG","UKG"].includes(item) ? item : `Class ${item}`}</span><input inputMode="numeric" placeholder="Amount ₹" value={monthlyFees[item]} onChange={event => setMonthlyFees(current => ({...current,[item]:event.target.value.replace(/\D/g,"")}))} required/></label>)}</div>
           <input
             type="file"
             accept="image/*"

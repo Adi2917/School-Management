@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [newLogo, setNewLogo] = useState(null);
   const [logoMenu, setLogoMenu] = useState(false);
   const [logoViewer, setLogoViewer] = useState(false);
+  const [examDraft,setExamDraft]=useState({name:"",type:"",class_amounts:{}});
 
   const classes = [
     "Nursery","LKG","UKG",
@@ -43,11 +44,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!schoolCode) return;
-    const refreshStudents = () => supabase.from("students").select("*").eq("school_code", schoolCode).then(({ data }) => setAllStudents(data || []));
+    const refreshStudents = () => Promise.all([supabase.from("students").select("*").eq("school_code", schoolCode),supabase.from("schools").select("*").eq("school_code",schoolCode).single()]).then(([{data},{data:school}])=>{setAllStudents(data||[]);if(school){setAdmin(school);setProfileForm(current=>({...school,admin_pin:current.admin_pin||""}));localStorage.setItem("schoolData",JSON.stringify(school));localStorage.setItem("adminData",JSON.stringify(school));}});
     refreshStudents();
-    const timer = window.setInterval(refreshStudents, 10000);
     window.addEventListener("focus", refreshStudents);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", refreshStudents); };
+    return () => { window.removeEventListener("focus", refreshStudents); };
   }, [schoolCode]);
 
   // 🔥 Debounced realtime search
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
     setProfileSaving(true);
     try {
       const school_logo = newLogo ? await uploadMedia(newLogo) : profileForm.school_logo;
-      const changes = { school_name: profileForm.school_name?.trim(), admin_name: profileForm.admin_name?.trim(), email: profileForm.email?.trim(), phone: profileForm.phone, location: profileForm.location?.trim(), school_logo, ...(profileForm.admin_pin ? { admin_pin: profileForm.admin_pin } : {}) };
+      const changes = { school_name: profileForm.school_name?.trim(), admin_name: profileForm.admin_name?.trim(), email: profileForm.email?.trim(), phone: profileForm.phone, location: profileForm.location?.trim(), school_logo, monthly_fees:profileForm.monthly_fees||{}, exam_fees:profileForm.exam_fees||[], ...(profileForm.admin_pin ? { admin_pin: profileForm.admin_pin } : {}) };
       const { data, error } = await supabase.from("schools").update(changes).eq("school_code", schoolCode).select().single();
       if (error) throw error;
       const { error: studentSyncError } = await supabase.from("students").update({ school_name: changes.school_name, school_logo }).eq("school_code", schoolCode);
@@ -99,6 +99,7 @@ export default function AdminDashboard() {
     } catch (error) { alert(error.message || "Profile update failed"); }
     finally { setProfileSaving(false); }
   };
+  const addExamFee=()=>{if(!examDraft.name.trim()||!examDraft.type.trim()||classes.some(item=>examDraft.class_amounts[item]===""||examDraft.class_amounts[item]===undefined))return alert("Enter exam name, type and amount for every class");setProfileForm(current=>({...current,exam_fees:[...(current.exam_fees||[]),{id:String(Date.now()),name:examDraft.name.trim(),type:examDraft.type.trim(),class_amounts:Object.fromEntries(classes.map(item=>[item,Number(examDraft.class_amounts[item])]))}]}));setExamDraft({name:"",type:"",class_amounts:{}})};
 
   if (!admin) return null;
 
@@ -157,6 +158,7 @@ export default function AdminDashboard() {
         {activeTab === "profile" && <section className="admin-profile-panel"><div className="admin-section-title"><div><span>ACCOUNT & SCHOOL</span><h2>Admin profile</h2></div><small>All changes stay linked to code {schoolCode}</small></div><div className="admin-profile-brand"><button type="button" className="admin-logo-button" onClick={()=>setLogoMenu(true)}><img src={newLogo ? URL.createObjectURL(newLogo) : profileForm.school_logo || "/brand-mark.svg"} alt="School logo"/></button><label><Upload/> Change school logo<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setNewLogo(e.target.files?.[0] || null)}/></label></div><div className="admin-profile-form"><label><span><BookOpen/>School name</span><input value={profileForm.school_name || ""} onChange={e => setProfileForm({...profileForm,school_name:e.target.value})}/></label><label><span><UserCog/>Admin name</span><input value={profileForm.admin_name || ""} onChange={e => setProfileForm({...profileForm,admin_name:e.target.value})}/></label><label><span><Mail/>Email</span><input type="email" value={profileForm.email || ""} onChange={e => setProfileForm({...profileForm,email:e.target.value})}/></label><label><span><Phone/>Phone</span><input inputMode="numeric" maxLength="10" value={profileForm.phone || ""} onChange={e => setProfileForm({...profileForm,phone:e.target.value.replace(/\D/g,"")})}/></label><label><span><ShieldCheck/>New admin PIN</span><span className="admin-pin-input"><input type="password" inputMode="numeric" maxLength="6" placeholder="Leave blank to keep current PIN" value={profileForm.admin_pin || ""} onChange={e => setProfileForm({...profileForm,admin_pin:e.target.value.replace(/\D/g,"")})}/></span></label><label><span><ShieldCheck/>School code</span><input value={schoolCode} readOnly/></label><label className="admin-location"><span><MapPin/>School address</span><textarea value={profileForm.location || ""} onChange={e => setProfileForm({...profileForm,location:e.target.value})}/></label></div><button className="save-admin-profile" disabled={profileSaving} onClick={saveAdminProfile}><Save/>{profileSaving ? "Saving profile…" : "Save profile changes"}</button></section>}
         {logoMenu && <div className="media-action-sheet" onMouseDown={()=>setLogoMenu(false)}><section className="media-action-card" onMouseDown={event=>event.stopPropagation()}><small>SCHOOL LOGO</small><h2>Choose an action</h2><div className="media-action-list"><button onClick={()=>{setLogoMenu(false);setLogoViewer(true)}}><Eye/> View logo</button><label><ImagePlus/> Add or change logo<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={event=>{setNewLogo(event.target.files?.[0]||null);setLogoMenu(false)}}/></label><button className="danger" onClick={()=>{setNewLogo(null);setProfileForm({...profileForm,school_logo:""});setLogoMenu(false)}}><Trash2/> Remove logo</button><button onClick={()=>setLogoMenu(false)}><X/> Cancel</button></div></section></div>}
         {logoViewer && <div className="image-lightbox" onMouseDown={()=>setLogoViewer(false)}><img src={newLogo?URL.createObjectURL(newLogo):profileForm.school_logo||"/brand-mark.svg"} alt="School logo" onMouseDown={event=>event.stopPropagation()}/><button onClick={()=>setLogoViewer(false)}><X/></button></div>}
+        {activeTab === "profile" && <section className="admin-profile-panel school-fee-setup"><div className="admin-section-title"><div><span>FINANCE CONFIGURATION</span><h2>School fee setup</h2></div><small>Shared by website and app</small></div><h3>Monthly Fee Structure</h3>{classes.map(item=><label key={item}><span>{["Nursery","LKG","UKG"].includes(item)?item:`Class ${item}`}</span><input inputMode="numeric" placeholder="Amount ₹" value={profileForm.monthly_fees?.[item]??""} onChange={e=>setProfileForm(current=>({...current,monthly_fees:{...(current.monthly_fees||{}),[item]:e.target.value.replace(/\D/g,"")}}))}/></label>)}<h3>Exam Fee Setup</h3><input placeholder="Exam name" value={examDraft.name} onChange={e=>setExamDraft({...examDraft,name:e.target.value})}/><input placeholder="Exam type" value={examDraft.type} onChange={e=>setExamDraft({...examDraft,type:e.target.value})}/>{classes.map(item=><label key={item}><span>{["Nursery","LKG","UKG"].includes(item)?item:`Class ${item}`}</span><input inputMode="numeric" placeholder="Amount ₹" value={examDraft.class_amounts[item]??""} onChange={e=>setExamDraft(current=>({...current,class_amounts:{...current.class_amounts,[item]:e.target.value.replace(/\D/g,"")}}))}/></label>)}<button type="button" className="save-admin-profile" onClick={addExamFee}>Add exam fee</button>{(profileForm.exam_fees||[]).map(item=><article key={item.id}><b>{item.name}</b> · <span>{item.type}</span> <button type="button" onClick={()=>setProfileForm(current=>({...current,exam_fees:current.exam_fees.filter(fee=>fee.id!==item.id)}))}>Remove</button></article>)}<button className="save-admin-profile" disabled={profileSaving} onClick={saveAdminProfile}><Save/>{profileSaving?"Saving…":"Save all fee settings"}</button></section>}
         <div className="admin-actions"><button className="primary-btn" onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Create notification</button><button className="logout-btn" onClick={handleLogout}><LogOut/> Logout</button></div>
         </section>
       </div>

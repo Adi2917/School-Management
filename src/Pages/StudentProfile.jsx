@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
-import { Edit3, Eye, GraduationCap, ImagePlus, KeyRound, MapPin, Phone, School, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
+import { Edit3, Eye, GraduationCap, ImagePlus, Mail, MapPin, Phone, School, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
 import "./StudentProfile.css";
 
 const fields = [
@@ -12,7 +12,7 @@ const fields = [
   { label: "Section", key: "section", icon: GraduationCap },
   { label: "Roll number", key: "roll", icon: ShieldCheck },
   { label: "Contact number", key: "number", icon: Phone },
-  { label: "Change PIN", key: "pin", icon: KeyRound },
+  { label: "Registered email", key: "email", icon: Mail },
   { label: "Address", key: "address", icon: MapPin },
 ];
 
@@ -56,12 +56,11 @@ export default function StudentProfile() {
     cacheStudent(updated);
     return updated;
   };
-  const openEdit = field => { setEdit(field); setValue(field.key === "pin" ? "" : String(student[field.key] ?? "")); };
+  const openEdit = field => { setEdit(field); setValue(String(student[field.key] ?? "")); };
   const save = async () => {
     const clean = value.trim();
     if (!clean) return alert("Value cannot be empty");
     if (edit.key === "number" && !/^\d{10}$/.test(clean)) return alert("Contact number must contain exactly 10 digits");
-    if (edit.key === "pin" && !/^\d{4}$/.test(clean)) return alert("Student PIN must contain exactly 4 digits");
     if (edit.key === "section" && !/^[A-Za-z]$/.test(clean)) return alert("Enter a valid one-letter section");
     setSaving(true);
     try { await patchStudent({ [edit.key]: clean }); setEdit(null); }
