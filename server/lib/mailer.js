@@ -1,9 +1,11 @@
 /* global process */
 import nodemailer from "nodemailer";
 
+const platformEmail = process.env.SMTP_USER || "adhyetaclasses1729@gmail.com";
+
 const transporter = () => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    const error = new Error("OTP email service needs SMTP_USER and SMTP_PASS");
+  if (!process.env.SMTP_PASS) {
+    const error = new Error("Connect Your School OTP mailbox needs its App Password");
     error.statusCode = 503;
     throw error;
   }
@@ -11,19 +13,19 @@ const transporter = () => {
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: Number(process.env.SMTP_PORT || 587),
     secure: String(process.env.SMTP_SECURE || "false") === "true",
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    auth: { user: platformEmail, pass: process.env.SMTP_PASS },
   });
 };
 
 const escapeHtml = value => String(value || "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]);
 
-export async function sendStudentPinOtp({ to, otp, studentName, schoolName, adminEmail }) {
+export async function sendStudentPinOtp({ to, otp, studentName, schoolName }) {
   const school = escapeHtml(schoolName || "Your school");
   const student = escapeHtml(studentName || "Student");
   const senderName = String(schoolName || "Connect Your School").replace(/[\r\n"]/g, "").trim();
   await transporter().sendMail({
-    from: process.env.SMTP_FROM || `"${senderName}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
-    replyTo: adminEmail || process.env.SMTP_USER,
+    from: `"${senderName} via Connect Your School" <${platformEmail}>`,
+    replyTo: platformEmail,
     to,
     subject: `${school} - Reset PIN OTP`,
     text: `Hello ${student}, your ${school} PIN reset code is ${otp}. It expires in 5 minutes.`,

@@ -118,7 +118,7 @@ app.post("/api/auth/student/request-pin-reset", async (req, res, next) => {
     await modelFor("pin_reset_otps").create({ id: crypto.randomUUID(), student_id: student.id, school_code: schoolCode, digest: otpDigest(otp), expires_at: new Date(Date.now() + 5 * 60 * 1000), attempts: 0 });
     const school = await modelFor("schools").findOne({ school_code: schoolCode }).lean();
     try {
-      await sendStudentPinOtp({ to: email, otp, studentName: student.name, schoolName: school?.school_name, adminEmail: school?.admin_email || school?.email });
+      await sendStudentPinOtp({ to: email, otp, studentName: student.name, schoolName: school?.school_name });
     } catch (mailError) {
       await modelFor("pin_reset_otps").deleteMany({ student_id: student.id });
       throw mailError;

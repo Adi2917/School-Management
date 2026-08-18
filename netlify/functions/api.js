@@ -124,7 +124,7 @@ export default async function handler(request) {
       const otp=String(crypto.randomInt(1000,10000)); const Otp=modelFor("pin_reset_otps"); await Otp.deleteMany({student_id:student.id});
       await Otp.create({id:crypto.randomUUID(),student_id:student.id,school_code:student.school_code,digest:otpDigest(otp),expires_at:new Date(Date.now()+300000),attempts:0});
       const school=await modelFor("schools").findOne({school_code:student.school_code}).lean();
-      try { await sendStudentPinOtp({to:email,otp,studentName:student.name,schoolName:school?.school_name,adminEmail:school?.admin_email||school?.email}); }
+      try { await sendStudentPinOtp({to:email,otp,studentName:student.name,schoolName:school?.school_name}); }
       catch(mailError){await Otp.deleteMany({student_id:student.id});throw mailError;}
       return json({data:{sent:true,masked_email:email.replace(/(^.).*(@.*$)/,"$1***$2")}});
     }
