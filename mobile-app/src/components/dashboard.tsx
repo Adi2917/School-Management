@@ -15,7 +15,7 @@ type StudentExtra = {
 };
 
 export function Dashboard({ role }: { role: 'admin' | 'student' }) {
-  const { session, signOut, updateUser, loading } = useAuth();
+  const { session, signOut, loading } = useAuth();
   const [freshUser, setFreshUser] = useState<School | Student>();
   const [students, setStudents] = useState<Student[] | null>(null);
   const [studentExtra, setStudentExtra] = useState<StudentExtra>({ notices: null, fees: null, results: null });
@@ -38,7 +38,6 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
         if (!school) throw new Error('School record not found.');
         setFreshUser(school);
         setStudents(latestStudents);
-        await updateUser(school);
       } else {
         const student = await api.getStudent(recordId);
         if (!student) throw new Error('Student record not found.');
@@ -47,7 +46,6 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
         ]);
         setFreshUser(student);
         setStudentExtra({ school, notices, fees, results });
-        await updateUser(student);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not sync data.');
@@ -55,7 +53,7 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
       setRefreshing(false);
       setSyncing(false);
     }
-  }, [recordId, role, schoolCode, sessionRole, sessionUser, updateUser]);
+  }, [recordId, role, schoolCode, sessionRole, sessionUser]);
 
   useFocusEffect(useCallback(() => {
     if (loading) return;
@@ -149,6 +147,7 @@ function AdminView({ school, students }: { school: School; students: Student[] |
       <Text style={styles.sectionTitle}>School management</Text>
       <View style={styles.actions}>
         <ActionCard icon="ID" value="Profile" label="Admin & school settings" onPress={() => router.push('/profile')} />
+        <ActionCard icon="₹" value="Fee Setup" label="Monthly & exam fee configuration" onPress={() => router.push('/fee-setup' as never)} />
         <ActionCard icon="ALL" value={students ? String(students.length) : '—'} label="Student directory" onPress={() => router.push('/students')} />
         <ActionCard icon="✦" value="Live" label="Manage school notices" onPress={() => router.push('/records?kind=notices')} />
       </View>

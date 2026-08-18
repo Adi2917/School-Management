@@ -5,9 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { AppHeader, Avatar, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
-import { api, compressImage, mediaUrl, School, Student, type ExamFee } from '@/lib/api';
-
-const CLASSES = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+import { api, compressImage, mediaUrl, School, Student } from '@/lib/api';
 
 export default function ProfileScreen() {
   const { studentId } = useLocalSearchParams<{ studentId?: string }>();
@@ -20,11 +18,6 @@ export default function ProfileScreen() {
   const [busy, setBusy] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
-  const [monthlyFees, setMonthlyFees] = useState<Record<string, string>>({});
-  const [examFees, setExamFees] = useState<ExamFee[]>([]);
-  const [examName, setExamName] = useState('');
-  const [examType, setExamType] = useState('');
-  const [examAmounts, setExamAmounts] = useState<Record<string, string>>({});
 
   const load = async () => {
     if (!session) return router.replace('/');
@@ -35,8 +28,6 @@ export default function ProfileScreen() {
         targetId ? api.getStudent(targetId) : Promise.resolve(null),
       ]);
       setSchool(schoolRecord);
-      setMonthlyFees(Object.fromEntries(CLASSES.map(item => [item, String(schoolRecord?.monthly_fees?.[item] ?? '')])));
-      setExamFees(schoolRecord?.exam_fees || []);
       setStudent(studentRecord);
       const source = studentRecord || schoolRecord;
       if (source) setForm(Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value == null ? '' : String(value)])));
@@ -61,7 +52,7 @@ export default function ProfileScreen() {
     try {
       const fields = isStudent
         ? { name: form.name, father_name: form.father_name, number: form.number, email: form.email, address: form.address, class: form.class, section: form.section, roll: form.roll, photo_url: form.photo_url }
-        : { school_name: form.school_name, admin_name: form.admin_name, admin_email: form.admin_email, phone: form.phone, location: form.location, school_logo: form.school_logo, monthly_fees: Object.fromEntries(CLASSES.map(item => [item, Number(monthlyFees[item] || 0)])), exam_fees: examFees, ...(form.new_pin ? { admin_pin: form.new_pin } : {}) };
+        : { school_name: form.school_name, admin_name: form.admin_name, admin_email: form.admin_email, phone: form.phone, location: form.location, school_logo: form.school_logo, ...(form.new_pin ? { admin_pin: form.new_pin } : {}) };
       const updated = await api.updateRecord<Student | School>(isStudent ? 'students' : 'schools', id, fields);
       const next = updated[0];
       if (next && ((!studentId && session?.role === 'student') || editingSchool)) await updateUser(next);
@@ -106,11 +97,6 @@ export default function ProfileScreen() {
 
   if (!session) return null;
   const displayName = student?.name || school?.school_name || 'Profile';
-  const addExamFee = () => {
-    if (!examName.trim() || !examType.trim() || CLASSES.some(item => !examAmounts[item])) return Alert.alert('Complete exam fee', 'Enter exam name, type and amount for every class.');
-    setExamFees(current => [...current, { id: `${Date.now()}`, name: examName.trim(), type: examType.trim(), class_amounts: Object.fromEntries(CLASSES.map(item => [item, Number(examAmounts[item])])) }]);
-    setExamName(''); setExamType(''); setExamAmounts({});
-  };
 
   return (
     <View style={styles.page}>
@@ -154,8 +140,6 @@ export default function ProfileScreen() {
                   <Field label="Admin email" value={form.admin_email || form.email} onChangeText={value => change('admin_email', value)} keyboardType="email-address" />
                   <Field label="Phone" value={form.phone} onChangeText={value => change('phone', value)} keyboardType="phone-pad" />
                   <Field label="Location" value={form.location} onChangeText={value => change('location', value)} />
-                  <View style={styles.configBox}><Text style={styles.configTitle}>MONTHLY FEES BY CLASS</Text>{CLASSES.map(item => <View key={item} style={styles.configRow}><Text style={styles.configLabel}>{['Nursery','LKG','UKG'].includes(item) ? item : `Class ${item}`}</Text><TextInput style={styles.amountInput} value={monthlyFees[item]} onChangeText={value => setMonthlyFees(current => ({...current,[item]:value.replace(/\D/g,'')}))} keyboardType="number-pad" placeholder="₹ amount" placeholderTextColor="#948b80"/></View>)}</View>
-                  <View style={styles.configBox}><Text style={styles.configTitle}>EXAM FEE SETUP</Text><Field label="Exam name" value={examName} onChangeText={setExamName}/><Field label="Exam type" value={examType} onChangeText={setExamType}/>{CLASSES.map(item => <View key={item} style={styles.configRow}><Text style={styles.configLabel}>{['Nursery','LKG','UKG'].includes(item) ? item : `Class ${item}`}</Text><TextInput style={styles.amountInput} value={examAmounts[item] || ''} onChangeText={value => setExamAmounts(current => ({...current,[item]:value.replace(/\D/g,'')}))} keyboardType="number-pad" placeholder="₹ amount" placeholderTextColor="#948b80"/></View>)}<Pressable style={styles.addFee} onPress={addExamFee}><Text style={styles.addFeeText}>Add exam fee</Text></Pressable>{examFees.map(item => <View key={item.id} style={styles.examFeeCard}><View style={styles.flex}><Text style={styles.examFeeName}>{item.name}</Text><Text style={styles.examFeeType}>{item.type}</Text></View><Pressable onPress={() => setExamFees(current => current.filter(fee => fee.id !== item.id))}><Text style={styles.removeFee}>Remove</Text></Pressable></View>)}</View>
                 </>
               )}
               {!student && <Field
