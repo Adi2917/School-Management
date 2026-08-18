@@ -22,7 +22,7 @@ export async function sendStudentPinOtp({ to, otp, studentName, schoolName, admi
   const student = escapeHtml(studentName || "Student");
   const senderName = String(schoolName || "Connect Your School").replace(/[\r\n"]/g, "").trim();
   await transporter().sendMail({
-    from: `"${senderName}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+    from: process.env.SMTP_FROM || `"${senderName}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
     replyTo: adminEmail || process.env.SMTP_USER,
     to,
     subject: `${school} - Reset PIN OTP`,
