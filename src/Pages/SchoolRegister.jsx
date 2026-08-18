@@ -126,7 +126,7 @@ export default function SchoolRegister() {
   };
 
   return (
-    <div className="register-container">
+    <div className="register-container school-onboarding">
       <EducationPanel mode="school" />
       {popup.show && (
         <div className="popup-overlay">
