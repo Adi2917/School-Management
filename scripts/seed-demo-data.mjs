@@ -3,6 +3,7 @@ import "dotenv/config";
 import crypto from "node:crypto";
 import mongoose from "mongoose";
 import { syncAllCollectionsToSheet } from "../server/lib/sheetSync.js";
+import { protectCredentials } from "../server/lib/auth.js";
 
 const classes = ["Nursery", "LKG", "UKG", ...Array.from({ length: 10 }, (_, index) => String(index + 1))];
 const sections = ["A", "B", "C"];
@@ -21,21 +22,23 @@ const modelFor = name => mongoose.models[name] || mongoose.model(name, schema, n
 const avatar = seed => `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f6bd3b&fontFamily=Arial`;
 
 const createdAt = new Date().toISOString();
-const schools = schoolSeeds.map(([schoolCode, schoolName, adminName, city], index) => ({
+const schools = await Promise.all(schoolSeeds.map(async ([schoolCode, schoolName, adminName, city], index) => protectCredentials("schools", {
   id: crypto.randomUUID(),
   school_code: schoolCode,
   school_name: schoolName,
   admin_name: adminName,
   email: `admin${index + 1}@connectyourschool.in`,
   phone: String(9100000001 + index),
-  admin_pin: String(610001 + index),
+  admin_pin: "123456",
   location: `${city}, India`,
   school_logo: avatar(schoolName),
+  monthly_fees: Object.fromEntries(classes.map((className, classIndex) => [className, 500 + classIndex * 50])),
+  exam_fees: [{ id:"annual-exam",name:"Annual Examination",type:"Final",class_amounts:Object.fromEntries(classes.map((className,classIndex)=>[className,800+classIndex*50])) }],
   sheet_managed: true,
   created_at: createdAt,
-}));
+})));
 
-const students = [];
+const studentSeeds = [];
 for (let schoolIndex = 0; schoolIndex < schools.length; schoolIndex += 1) {
   const school = schools[schoolIndex];
   for (let classIndex = 0; classIndex < classes.length; classIndex += 1) {
@@ -43,18 +46,19 @@ for (let schoolIndex = 0; schoolIndex < schools.length; schoolIndex += 1) {
       for (let roll = 1; roll <= 5; roll += 1) {
         const serial = schoolIndex * 195 + classIndex * 15 + sectionIndex * 5 + roll;
         const name = `${firstNames[(serial - 1) % firstNames.length]} ${lastNames[schoolIndex]}`;
-        students.push({
+        studentSeeds.push({
           id: crypto.randomUUID(),
           name,
           father_name: `${["Rajesh", "Suresh", "Manoj", "Amit", "Deepak"][schoolIndex]} ${lastNames[schoolIndex]}`,
           number: String(7000000000 + serial),
+          email: `student${String(serial).padStart(4, "0")}@demo.connectyourschool.in`,
           school_code: school.school_code,
           school_name: school.school_name,
           school_logo: school.school_logo,
           class: classes[classIndex],
           section: sections[sectionIndex],
           roll: String(roll),
-          pin: String(1000 + ((serial - 1) % 9000)),
+          pin: "1234",
           address: school.location,
           photo_url: avatar(name),
           sheet_managed: true,
@@ -63,6 +67,11 @@ for (let schoolIndex = 0; schoolIndex < schools.length; schoolIndex += 1) {
       }
     }
   }
+}
+
+const students = [];
+for (let offset = 0; offset < studentSeeds.length; offset += 24) {
+  students.push(...await Promise.all(studentSeeds.slice(offset, offset + 24).map(document => protectCredentials("students", document))));
 }
 
 if (process.argv.includes("--dry-run")) {
@@ -85,10 +94,16 @@ await modelFor("schools").bulkWrite(schools.map(document => ({
   updateOne: { filter: { school_code: document.school_code }, update: { $set: document }, upsert: true },
 })), { ordered: false });
 await modelFor("students").bulkWrite(students.map(document => ({
-  updateOne: { filter: { school_code: document.school_code, number: document.number }, update: { $set: document }, upsert: true },
+  updateOne: { filter: { email: document.email }, update: { $set: document }, upsert: true },
 })), { ordered: false });
+await Promise.all([
+  modelFor("schools").collection.createIndex({ school_code:1 }, { unique:true }),
+  modelFor("students").collection.createIndex({ email:1 }, { unique:true }),
+  modelFor("students").collection.createIndex({ number:1 }, { unique:true }),
+]);
 
 const sheet = await syncAllCollectionsToSheet(modelFor);
 console.log(`Seeded ${schools.length} schools and ${students.length} students.`);
+console.log("Demo credentials: every admin PIN 123456; every student PIN 1234.");
 console.log(`Google Sheet sync: ${sheet.configured ? "complete" : "waiting for credentials"}`);
 await mongoose.disconnect();

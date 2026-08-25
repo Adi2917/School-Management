@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
-import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
+import { authenticate, bearerClaims, hashPin, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
 import { sendStudentPinOtp } from "../../server/lib/mailer.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
@@ -113,6 +113,22 @@ export default async function handler(request) {
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
     }
+    if (route[0] === "seed-demo" && request.method === "POST") {
+      const supplied=request.headers.get("x-seed-secret"); const body=await request.json();
+      if(!process.env.SHEET_SYNC_SECRET||supplied!==process.env.SHEET_SYNC_SECRET)return json({message:"Unauthorized"},401);
+      if(body.phrase!=="RESET_DEMO_DATA"||body.confirm_database!==mongoose.connection.name)return json({message:"Database confirmation did not match"},400);
+      if(["admin","local","config"].includes(mongoose.connection.name))return json({message:"Refusing to reset a system database"},400);
+      const classes=["Nursery","LKG","UKG",...Array.from({length:10},(_,index)=>String(index+1))]; const sections=["A","B","C"];
+      const schoolSeeds=[["410001","Sunrise Public School","Anil Sharma","Delhi"],["410002","Greenfield Academy","Neha Verma","Mumbai"],["410003","Riverdale International School","Rakesh Singh","Patna"],["410004","Scholars Valley School","Pooja Gupta","Ranchi"],["410005","Bright Future Academy","Vikram Kumar","Kolkata"]];
+      const firstNames=["Aarav","Aditi","Anaya","Arjun","Diya","Ishaan","Kavya","Krishna","Meera","Rohan"]; const lastNames=["Sharma","Kumar","Verma","Singh","Gupta"]; const fathers=["Rajesh","Suresh","Manoj","Amit","Deepak"];
+      const [adminHash,studentHash]=await Promise.all([hashPin("123456"),hashPin("1234")]); const createdAt=new Date().toISOString(); const avatar=name=>`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=f6bd3b&fontFamily=Arial`;
+      const schools=schoolSeeds.map(([school_code,school_name,admin_name,city],index)=>({id:crypto.randomUUID(),school_code,school_name,admin_name,email:`admin${index+1}@connectyourschool.in`,admin_email:`admin${index+1}@connectyourschool.in`,phone:String(9100000001+index),admin_pin_hash:adminHash,location:`${city}, India`,school_logo:avatar(school_name),monthly_fees:Object.fromEntries(classes.map((name,classIndex)=>[name,500+classIndex*50])),exam_fees:[{id:"annual-exam",name:"Annual Examination",type:"Final",class_amounts:Object.fromEntries(classes.map((name,classIndex)=>[name,800+classIndex*50]))}],sheet_managed:true,created_at:createdAt}));
+      const students=[]; for(let schoolIndex=0;schoolIndex<schools.length;schoolIndex+=1){const school=schools[schoolIndex];for(let classIndex=0;classIndex<classes.length;classIndex+=1){for(let sectionIndex=0;sectionIndex<sections.length;sectionIndex+=1){for(let roll=1;roll<=5;roll+=1){const serial=schoolIndex*195+classIndex*15+sectionIndex*5+roll;const name=`${firstNames[(serial-1)%firstNames.length]} ${lastNames[schoolIndex]}`;students.push({id:crypto.randomUUID(),name,father_name:`${fathers[schoolIndex]} ${lastNames[schoolIndex]}`,number:String(7000000000+serial),email:`student${String(serial).padStart(4,"0")}@demo.connectyourschool.in`,school_code:school.school_code,school_name:school.school_name,school_logo:school.school_logo,class:classes[classIndex],section:sections[sectionIndex],roll:String(roll),pin_hash:studentHash,address:school.location,photo_url:avatar(name),sheet_managed:true,created_at:createdAt});}}}}
+      await mongoose.connection.db.dropDatabase(); const School=modelFor("schools"); const Student=modelFor("students");
+      await Promise.all([School.insertMany(schools,{ordered:false}),Student.insertMany(students,{ordered:false})]);
+      await Promise.all([School.collection.createIndex({school_code:1},{unique:true}),Student.collection.createIndex({email:1},{unique:true}),Student.collection.createIndex({number:1},{unique:true})]);
+      const sheet=await syncAllCollectionsToSheet(modelFor); return json({data:{database:mongoose.connection.name,schools:schools.length,students:students.length,sheet:sheet.configured}},201);
+    }
     if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
       const role = route[1];
       if (!new Set(["admin", "student"]).has(role)) return json({ message: "Invalid account type" }, 400);
@@ -172,7 +188,7 @@ export default async function handler(request) {
     if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
     if (request.method === "POST") {
       const body = await request.json(); const rawItems = Array.isArray(body) ? body : [body];
-      if (collection === "students") { for (const item of rawItems) { const email=String(item.email||"").trim().toLowerCase(); if(email && await Model.exists({email})) return json({message:"This email is already registered to a student"},409); item.email=email; } }
+      if (collection === "students") { for (const item of rawItems) { const email=String(item.email||"").trim().toLowerCase(); const number=String(item.number||"").trim(); if(email && await Model.exists({email})) return json({message:"This email is already registered to a student"},409); if(number && await Model.exists({number})) return json({message:"This phone number is already registered to a student"},409); item.email=email; item.number=number; } }
       if (!(await authorizeMutation(request, collection, rawItems))) return json({ message: "You are not allowed to change these records" }, 403);
       for (const item of rawItems) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
       const items = await Promise.all(rawItems.map(async item => ({ ...(await protectCredentials(collection, item)), sheet_managed: false }))); const saved = [];

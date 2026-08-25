@@ -165,6 +165,17 @@ app.post("/api/sheet-sync", sheetAuth, async (req, res, next) => {
     res.json({ data: result });
   } catch (error) { next(error); }
 });
+app.post("/api/students", async (req, res, next) => {
+  try {
+    const raw = Array.isArray(req.body) ? req.body : [req.body];
+    for (const item of raw) {
+      const number = String(item.number || "").trim();
+      if (number && await modelFor("students").exists({ number })) return res.status(409).json({ message:"This phone number is already registered to a student" });
+      item.number = number;
+    }
+    next();
+  } catch (error) { next(error); }
+});
 app.post("/api/uploads", upload.single("file"), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: "Choose a file" });
