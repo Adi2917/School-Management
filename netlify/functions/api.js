@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
-import { authenticate, bearerClaims, hashPin, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
+import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
 import { sendStudentPinOtp } from "../../server/lib/mailer.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
@@ -121,11 +121,6 @@ export default async function handler(request) {
         ? await syncMongoFromSheet(modelFor)
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
-    }
-    if (route[0] === "maintenance" && route[1] === "repair-school-410006" && request.method === "POST") {
-      if (!authorizedForSheetSync(request)) return json({ message:"Unauthorized" },401);
-      const result=await modelFor("schools").updateOne({school_code:"410006"},{$set:{admin_pin_hash:await hashPin("610006")},$unset:{admin_pin:""}});
-      return json({data:{matched:result.matchedCount,updated:result.modifiedCount}});
     }
     if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
       const role = route[1];
