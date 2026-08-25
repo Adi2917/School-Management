@@ -2,8 +2,8 @@
 import { google } from "googleapis";
 
 export const SHEET_DEFINITIONS = {
-  schools: ["id", "school_code", "school_name", "admin_name", "email", "phone", "location", "school_logo", "monthly_fees", "exam_fees", "created_at", "updated_at"],
-  students: ["id", "school_code", "school_name", "name", "father_name", "number", "email", "class", "section", "roll", "address", "photo_url", "created_at", "updated_at"],
+  schools: ["id", "school_code", "school_name", "admin_name", "email", "phone", "location", "school_logo", "monthly_fees", "exam_fees", "created_at", "updated_at", "pin_status"],
+  students: ["id", "school_code", "school_name", "name", "father_name", "number", "email", "class", "section", "roll", "address", "photo_url", "created_at", "updated_at", "pin_status"],
   fees: ["id", "student_id", "school_code", "fee_type", "exam_fee_id", "title", "month", "amount", "due_amount", "status", "paid_at", "created_at", "updated_at"],
   notifications: ["id", "school_code", "student_id", "tittle", "message", "image_url", "file_url", "media_type", "created_at", "updated_at"],
   exam_types: ["id", "school_code", "name", "created_at", "updated_at"],
@@ -88,11 +88,21 @@ export const ensureSheetStructure = async () => {
     valueInputOption: "RAW",
     requestBody: { values: [
       ["CONNECT YOUR SCHOOL", "MongoDB mirror"],
-      ["schema_version", "1"],
+      ["schema_version", "2"],
       ["sync_mode", "two_way"],
       ["deletion_policy", "missing Sheet row deletes its Sheet-managed MongoDB record"],
       ["last_bootstrap", new Date().toISOString()],
     ] },
+  });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: process.env.GOOGLE_SHEET_ID,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: Object.entries(TAB_NAMES).map(([collection, tab]) => ({
+        range: `'${tab}'!A1`,
+        values: [SHEET_DEFINITIONS[collection]],
+      })),
+    },
   });
   await formatDataTabs(sheets);
   return { configured: true, sheets };
@@ -103,7 +113,7 @@ const replaceTab = async (sheets, collection, documents) => {
   const columns = SHEET_DEFINITIONS[collection];
   const values = [columns, ...documents.map(item => {
     const document = normalize(item);
-    return columns.map(column => serialize(document[column]));
+    return columns.map(column => serialize(column === "pin_status" ? "Protected" : document[column]));
   })];
   await sheets.spreadsheets.values.clear({ spreadsheetId: process.env.GOOGLE_SHEET_ID, range: `'${tab}'!A:ZZ` });
   await sheets.spreadsheets.values.update({
@@ -149,6 +159,7 @@ const valuesToDocuments = (values, collection) => {
       }
       return [column, value];
     })))
+    .map(document => { delete document.pin_status; return document; })
     .filter(document => document.id);
 };
 
