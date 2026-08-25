@@ -113,13 +113,6 @@ export default async function handler(request) {
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
     }
-    if(route[0]==="fix-demo-emails"&&request.method==="POST"){
-      const body=await request.json();if(!process.env.SHEET_SYNC_SECRET||request.headers.get("x-seed-secret")!==process.env.SHEET_SYNC_SECRET)return json({message:"Unauthorized"},401);if(body.phrase!=="FIX_DEMO_EMAILS")return json({message:"Invalid confirmation"},400);
-      const School=modelFor("schools");const Student=modelFor("students");const schools=await School.find({school_code:{$in:["410001","410002","410003","410004","410005"]}}).sort({school_code:1}).lean();const students=await Student.find({}).sort({number:1}).lean();
-      await School.bulkWrite(schools.map((school,index)=>({updateOne:{filter:{_id:school._id},update:{$set:{email:`adhyetaclasses1729+admin${index+1}@gmail.com`,admin_email:`adhyetaclasses1729+admin${index+1}@gmail.com`}}}})),{ordered:false});
-      await Student.bulkWrite(students.map((student,index)=>({updateOne:{filter:{_id:student._id},update:{$set:{email:`adhyetaclasses1729+student${String(index+1).padStart(4,"0")}@gmail.com`}}}})),{ordered:false});
-      const sheet=await syncAllCollectionsToSheet(modelFor);return json({data:{schools:schools.length,students:students.length,sheet:sheet.configured}});
-    }
     if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
       const role = route[1];
       if (!new Set(["admin", "student"]).has(role)) return json({ message: "Invalid account type" }, 400);
