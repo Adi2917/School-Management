@@ -70,7 +70,7 @@ const authorizeMutation = async (req, collection, records = []) => {
   if (!claims) return false;
   if (collection === "students" && claims.role === "student") return records.length > 0 && records.every(record => String(record.id || record._id) === String(claims.subject));
   if (claims.role !== "admin") return false;
-  if (!records.length) return false;
+  if (!records.length) return Boolean(req.query.school_code && String(req.query.school_code) === String(claims.school_code));
   const codes = await Promise.all(records.map(record => recordSchoolCode(collection, record)));
   return codes.every(code => code && code === String(claims.school_code));
 };

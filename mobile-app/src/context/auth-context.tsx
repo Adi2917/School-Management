@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { setAccessToken, type School, type Session as ApiSession, type Student } from '@/lib/api';
+import { registerForPushNotifications } from '@/lib/push-notifications';
 
 const KEY = 'connect-your-school-session-v1';
 export type Session = ApiSession;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.setItemAsync(KEY, JSON.stringify(safeSession));
     setSession(safeSession);
   }, []);
+  useEffect(() => { if(session?.token) void registerForPushNotifications(); }, [session?.token]);
   const signOut = useCallback(async () => { setAccessToken(); setSession(null); await SecureStore.deleteItemAsync(KEY); }, []);
   const updateUser = useCallback(async (user: School | Student) => {
     if (!session) return;

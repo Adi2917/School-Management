@@ -6,7 +6,7 @@ const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://connectyourschool.i
 export type UserRole = 'admin' | 'student';
 export type School = { id?: string; school_code: string; school_name: string; admin_name?: string; admin_email?: string; email?: string; phone?: string; location?: string; school_logo?: string; monthly_fees?: Record<string, number>; exam_fees?: ExamFee[] };
 export type Student = { id: string; school_code: string; name: string; father_name?: string; number?: string; email?: string; class?: string; section?: string; roll?: string; address?: string; photo_url?: string; school_name?: string; school_logo?: string };
-export type Fee = { id?: string; student_id: string; school_code?: string; month: string; status: string; amount?: number | string; due_amount?: number | string; dues_paid?: boolean; paid_at?: string; fee_type?: 'monthly' | 'exam'; exam_fee_id?: string; title?: string };
+export type Fee = { id?: string; student_id: string; school_code?: string; month: string; status: string; amount?: number | string; carried_due?: number | string; due_amount?: number | string; dues_paid?: boolean; paid_at?: string; fee_type?: 'monthly' | 'exam'; exam_fee_id?: string; title?: string };
 export type ExamFee = { id: string; name: string; type: string; class_amounts: Record<string, number> };
 export type Notice = { id?: string; school_code: string; title?: string; message?: string; file_url?: string; file_type?: string; created_at?: string; updated_at?: string };
 export type Result = { id?: string; student_id: string; school_code?: string; exam_type_id?: string; exam_name?: string; subject: string; marks?: string | number; obtained_marks?: string | number; full_marks?: string | number };
@@ -79,6 +79,7 @@ export const loginAdmin = async (schoolCode: string, pin: string) => normalizeSe
 export const loginStudent = async (schoolCode: string, phone: string, pin: string) => normalizeSession('student', await request<LoginPayload>('/auth/student/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), pin: pin.trim() }) }));
 export const requestStudentPinReset = (schoolCode: string, phone: string, email: string) => request<{ sent: boolean; masked_email?: string }>('/auth/student/request-pin-reset', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), email: email.trim().toLowerCase() }) });
 export const resetStudentPin = (schoolCode: string, phone: string, email: string, otp: string, pin: string) => request<{ reset: boolean }>('/auth/student/reset-pin', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), email: email.trim().toLowerCase(), otp, pin }) });
+export const registerPushToken = (token: string, platform: string) => request<{ registered: boolean }>('/push/register', { method:'POST',body:JSON.stringify({token,platform}) });
 export const getStats = () => request<PlatformStats>('/stats');
 export async function getSchool(schoolCode: string) { return first(await request<School[]>('/schools' + query({ school_code: schoolCode }))); }
 export async function getStudent(id: string) { return first(await request<Student[]>('/students' + query({ id }))); }
@@ -135,5 +136,5 @@ export function mediaUrl(raw?: string | null) {
   const origin = API_URL.replace(/\/api$/, '');
   return raw.startsWith('/') ? origin + raw : `${origin}/${raw}`;
 }
-export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, requestStudentPinReset, resetStudentPin, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile, compressImage };
+export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, requestStudentPinReset, resetStudentPin, registerPushToken, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile, compressImage };
 export { API_URL };

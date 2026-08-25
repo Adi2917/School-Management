@@ -40,6 +40,14 @@
       ],
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/connect-your-school-monochrome.png",
+          "color": "#F4B93A",
+          "defaultChannel": "school-updates"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Connect Your School uses your photos only when you choose a school logo, student profile photo, or notice attachment.",

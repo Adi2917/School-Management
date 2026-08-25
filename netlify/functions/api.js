@@ -43,14 +43,27 @@ const mirrorCollection = async (collection, Model) => {
     return { configured: true, error: error.message };
   }
 };
+const sendExpoPush = async ({ schoolCode, studentId = null, audience, title, message, eventType }) => {
+  try {
+  const tokenFilter={school_code:String(schoolCode),role:audience,...(audience==="student"&&studentId?{subject:String(studentId)}:{})};
+  const [tokens,school]=await Promise.all([modelFor("push_tokens").distinct("token",tokenFilter),modelFor("schools").findOne({school_code:String(schoolCode)},{school_name:1}).lean()]);
+  if(!tokens.length)return;
+  const pushTitle=`${school?.school_name||"Connect Your School"} · ${title}`;
+  const payload=tokens.filter(token=>/^Expo(nent)?PushToken\[.+\]$/.test(token)).map(to=>({to,sound:"default",title:pushTitle,body:message,channelId:"school-updates",data:{eventType,schoolCode:String(schoolCode),studentId}}));
+  if(!payload.length)return;
+  const response=await fetch("https://exp.host/--/api/v2/push/send",{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json"},body:JSON.stringify(payload)});
+  if(!response.ok)console.error(`Expo push service failed (${response.status})`);
+  } catch(error) { console.error("Expo push delivery failed:",error.message); }
+};
 const upsertActivityNotification = async ({ activityKey, schoolCode, studentId = null, audience, title, message, eventType }) => {
   if (!schoolCode || !activityKey) return;
   const now = new Date();
-  await modelFor("notifications").updateOne(
+  await modelFor("activity_events").updateOne(
     { activity_key: activityKey },
     { $set: { school_code:String(schoolCode),student_id:studentId,audience,title,tittle:title,message,event_type:eventType,updated_at:now }, $setOnInsert:{ id:crypto.randomUUID(),created_at:now,sheet_managed:false } },
     { upsert:true },
   );
+  await sendExpoPush({schoolCode,studentId,audience,title,message,eventType});
 };
 const refreshSchoolLedgerAmounts = async school => {
   if (!school?.school_code) return;
@@ -77,7 +90,8 @@ const authorizeMutation = async (request, collection, records = []) => {
   const claims = bearerClaims(request.headers);
   if (!claims) return false;
   if (collection === "students" && claims.role === "student") return records.length > 0 && records.every(record => String(record.id || record._id) === String(claims.subject));
-  if (claims.role !== "admin" || !records.length) return false;
+  if (claims.role !== "admin") return false;
+  if (!records.length) { const requested=new URL(request.url).searchParams.get("school_code");return Boolean(requested&&String(requested)===String(claims.school_code)); }
   const codes = await Promise.all(records.map(record => recordSchoolCode(collection, record)));
   return codes.every(code => code && code === String(claims.school_code));
 };
@@ -113,6 +127,13 @@ export default async function handler(request) {
           "Cache-Control": "public, max-age=15, stale-while-revalidate=45",
         },
       });
+    }
+    if(route[0]==="push"&&route[1]==="register"&&request.method==="POST"){
+      const claims=bearerClaims(request.headers);if(!claims)return json({message:"Unauthorized"},401);
+      const body=await request.json();const token=String(body.token||"").trim();
+      if(!/^Expo(nent)?PushToken\[.+\]$/.test(token))return json({message:"Invalid Expo push token"},400);
+      await modelFor("push_tokens").updateOne({token},{$set:{token,role:claims.role,subject:String(claims.subject),school_code:String(claims.school_code),platform:String(body.platform||"unknown"),updated_at:new Date()}},{upsert:true});
+      return json({data:{registered:true}});
     }
     if (route[0] === "sheet-sync" && request.method === "POST") {
       if (!authorizedForSheetSync(request)) return json({ message: "Unauthorized" }, 401);
@@ -178,7 +199,7 @@ export default async function handler(request) {
     const Model = modelFor(collection); const rawFilter = Object.fromEntries([...url.searchParams].filter(([key]) => key !== "sort"));
     let filter = rawFilter;
     if (rawFilter.id && mongoose.Types.ObjectId.isValid(rawFilter.id)) { const { id, ...rest } = rawFilter; filter = { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; }
-    if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; if(claims?.role==="student"&&collection==="notifications")filter={...filter,$and:[{$or:[{audience:{$exists:false}},{audience:"student"},{audience:"all"}]},{$or:[{student_id:null},{student_id:""},{student_id:{$exists:false}},{student_id:String(claims.subject)}]}]}; let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
+    if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; if(collection==="notifications"){const conditions=[{$or:[{event_type:{$exists:false}},{event_type:"notice"}]}];if(claims?.role==="student")conditions.push({$or:[{audience:{$exists:false}},{audience:"student"},{audience:"all"}]},{$or:[{student_id:null},{student_id:""},{student_id:{$exists:false}},{student_id:String(claims.subject)}]});filter={...filter,$and:conditions};} let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
     if (request.method === "POST") {
       const body = await request.json(); const rawItems = Array.isArray(body) ? body : [body];
       if (collection === "schools") { for (const item of rawItems) if (await Model.exists({ school_code:String(item.school_code||"").trim() })) return json({message:"This school code is already registered"},409); }
@@ -201,7 +222,7 @@ export default async function handler(request) {
         void mirrorCollection(collection, Model);
         return json({ data: items.map(normalize) }, 201);
       }
-      for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } const created=normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject()); saved.push(created); if(collection==="students")await upsertActivityNotification({activityKey:`student:${created.id}`,schoolCode:created.school_code,studentId:created.id,audience:"admin",title:"New student registered",message:`${created.name} joined Class ${created.class}-${created.section}.`,eventType:"student_registered"}); if(collection==="results")await upsertActivityNotification({activityKey:`result:${created.student_id}:${created.exam_type_id||created.exam_name}`,schoolCode:created.school_code,studentId:created.student_id,audience:"student",title:"Result updated",message:`Your ${created.exam_name||"exam"} result has been published.`,eventType:"result_updated"}); }
+      for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } const created=normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject()); saved.push(created); if(collection==="students")await upsertActivityNotification({activityKey:`student:${created.id}`,schoolCode:created.school_code,studentId:created.id,audience:"admin",title:"New student registered",message:`${created.name} joined Class ${created.class}-${created.section}.`,eventType:"student_registered"}); if(collection==="results")await upsertActivityNotification({activityKey:`result:${created.student_id}:${created.exam_type_id||created.exam_name}`,schoolCode:created.school_code,studentId:created.student_id,audience:"student",title:"Result updated",message:`Your ${created.exam_name||"exam"} result has been published.`,eventType:"result_updated"}); if(collection==="notifications")await sendExpoPush({schoolCode:created.school_code,studentId:created.student_id||null,audience:created.audience||"student",title:created.title||created.tittle||"School notice",message:created.message||"A new school notice was published.",eventType:created.event_type||"notice"}); }
       void mirrorCollection(collection, Model);
       return json({ data: saved }, 201);
     }
