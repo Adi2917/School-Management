@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
-import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
+import { authenticate, bearerClaims, hashPin, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
 import { sendStudentPinOtp } from "../../server/lib/mailer.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
@@ -112,6 +112,16 @@ export default async function handler(request) {
         ? await syncMongoFromSheet(modelFor)
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
+    }
+    if (route[0] === "maintenance" && route[1] === "repair-demo-pins" && request.method === "POST") {
+      if (!authorizedForSheetSync(request)) return json({ message: "Unauthorized" }, 401);
+      const demoCodes = ["410001", "410002", "410003", "410004", "410005"];
+      const [adminPinHash, studentPinHash] = await Promise.all([hashPin("123456"), hashPin("1234")]);
+      const [schools, students] = await Promise.all([
+        modelFor("schools").updateMany({ school_code: { $in: demoCodes } }, { $set: { admin_pin_hash: adminPinHash }, $unset: { admin_pin: "" } }),
+        modelFor("students").updateMany({ school_code: { $in: demoCodes } }, { $set: { pin_hash: studentPinHash }, $unset: { pin: "" } }),
+      ]);
+      return json({ data: { schools: schools.modifiedCount, students: students.modifiedCount } });
     }
     if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
       const role = route[1];
