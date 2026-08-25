@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authLogin } from "../supabaseClient";
+import { authLogin, requestAdminPinReset, resetAdminPin } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
 import { clearSession, saveSession } from "../session";
@@ -14,6 +14,7 @@ export default function SchoolLogin() {
     admin_pin: "",
   });
   const [loading, setLoading] = useState(false);
+  const [resetMode,setResetMode]=useState(false),[email,setEmail]=useState(""),[otp,setOtp]=useState(""),[newPin,setNewPin]=useState(""),[otpSent,setOtpSent]=useState(false),[otpSeconds,setOtpSeconds]=useState(0);
   const [popup, setPopup] = useState({
     show: false,
     type: "",
@@ -25,6 +26,7 @@ export default function SchoolLogin() {
     localStorage.removeItem("schoolData");
     localStorage.removeItem("adminData");
   }, []);
+  useEffect(()=>{if(!otpSeconds)return;const timer=window.setInterval(()=>setOtpSeconds(value=>Math.max(0,value-1)),1000);return()=>window.clearInterval(timer)},[otpSeconds]);
 
   const showPopup = (type, message) => {
     setPopup({ show: true, type, message });
@@ -63,6 +65,7 @@ export default function SchoolLogin() {
       showPopup("error", err.message || "Invalid school credentials");
     }
   };
+  const handleReset=async event=>{event.preventDefault();if(!/^\d{6}$/.test(form.school_code))return showPopup("error","Enter a valid 6 digit school code");if(!/^\S+@\S+\.\S+$/.test(email))return showPopup("error","Enter the registered admin email");setLoading(true);try{if(!otpSent||otpSeconds===0){await requestAdminPinReset({school_code:form.school_code,email});setOtpSent(true);setOtpSeconds(300);setOtp("");showPopup("success","4-digit OTP sent. It is valid for 5 minutes.");}else{if(!/^\d{4}$/.test(otp)||!/^\d{6}$/.test(newPin))throw new Error("Enter the 4-digit OTP and a new 6-digit PIN");await resetAdminPin({school_code:form.school_code,email,otp,pin:newPin});setResetMode(false);setOtpSent(false);setOtpSeconds(0);setOtp("");setNewPin("");showPopup("success","Admin PIN reset complete");}}catch(error){showPopup("error",error.message)}finally{setLoading(false)}};
 
   return (
     <div className="login-container">
@@ -76,7 +79,7 @@ export default function SchoolLogin() {
       <div className="login-card">
         <h2>School Login</h2>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={resetMode?handleReset:handleLogin}>
           <input
             type="text"
             name="school_code"
@@ -87,7 +90,7 @@ export default function SchoolLogin() {
             onChange={handleChange}
             required
           />
-          <PinInput
+          {!resetMode&&<PinInput
             name="admin_pin"
             inputMode="numeric"
             maxLength="6"
@@ -95,11 +98,13 @@ export default function SchoolLogin() {
             value={form.admin_pin}
             onChange={handleChange}
             required
-          />
+          />}
+          {resetMode&&<><input type="email" placeholder="Registered admin email" value={email} onChange={event=>setEmail(event.target.value)} required/>{otpSent&&otpSeconds>0&&<><div className="otp-timer">OTP valid for <b>{String(Math.floor(otpSeconds/60)).padStart(2,"0")}:{String(otpSeconds%60).padStart(2,"0")}</b></div><input placeholder="4 digit OTP" inputMode="numeric" maxLength="4" value={otp} onChange={event=>setOtp(event.target.value.replace(/\D/g,"").slice(0,4))} required/><PinInput placeholder="New 6 digit Admin PIN" inputMode="numeric" maxLength="6" value={newPin} onChange={event=>setNewPin(event.target.value.replace(/\D/g,"").slice(0,6))} required/></>}</>}
 
           <button type="submit" disabled={loading}>
-            {loading ? "Checking..." : "Login"}
+            {loading?"Please wait...":resetMode?(!otpSent||otpSeconds===0?(otpSent?"Resend OTP":"Send secure OTP"):"Verify OTP & reset PIN"):"Login"}
           </button>
+          <button type="button" className="text-action" onClick={()=>{setResetMode(value=>!value);setOtpSent(false);setOtpSeconds(0);setPopup({show:false,type:"",message:""})}}>{resetMode?"Back to login":"Forgot Admin PIN? Reset with email OTP"}</button>
         </form>
       </div>
     </div>

@@ -20,14 +20,20 @@ export async function authLogin(role, credentials) {
   return body.data?.user;
 }
 
-async function authAction(path, payload) {
-  const response = await fetch(`${API_URL}/auth/student/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+async function authAction(role, path, payload) {
+  const response = await fetch(`${API_URL}/auth/${role}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.message || "Request failed");
   return body.data;
 }
-export const requestStudentPinReset = payload => authAction("request-pin-reset", payload);
-export const resetStudentPin = payload => authAction("reset-pin", payload);
+export const requestStudentPinReset = payload => authAction("student", "request-pin-reset", payload);
+export const resetStudentPin = payload => authAction("student", "reset-pin", payload);
+export const requestAdminPinReset = payload => authAction("admin", "request-pin-reset", payload);
+export const resetAdminPin = payload => authAction("admin", "reset-pin", payload);
+export async function getCollectionAnalytics(params = {}) {
+  const query = new URLSearchParams(params); const token=localStorage.getItem(TOKEN_KEY);
+  const response=await fetch(`${API_URL}/analytics/collections?${query}`,{headers:{...(token?{Authorization:`Bearer ${token}`}:{})}});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.message||"Could not load collection analytics");return body.data;
+}
 
 class QueryBuilder {
   constructor(collection) { this.collection = collection; this.filters = []; this.action = "select"; this.payload = null; this.one = false; }

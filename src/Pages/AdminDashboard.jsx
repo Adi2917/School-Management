@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { getCollectionAnalytics, supabase } from "../supabaseClient";
 import "./AdminDashboard.css";
 import { BellRing, BookOpen, ChevronRight, Eye, ImagePlus, LayoutDashboard, LogOut, Mail, MapPin, Phone, ReceiptIndianRupee, Save, Search, ShieldCheck, Trash2, Upload, UserCog, Users, X } from "lucide-react";
 import { clearSession } from "../session";
 import { uploadMedia } from "../mediaClient";
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+function CollectionPanel(){const [range,setRange]=useState("monthly"),[from,setFrom]=useState(""),[to,setTo]=useState(""),[data,setData]=useState(null),[error,setError]=useState("");const load=async next=>{const selected=next||range;if(selected==="custom"&&(!from||!to))return;setError("");try{setData(await getCollectionAnalytics({range:selected,...(selected==="custom"?{from,to}:{})}));}catch(caught){setError(caught.message)}};useEffect(()=>{load("monthly")},[]);const choose=value=>{setRange(value);if(value!=="custom")load(value)};return <section className="collection-panel"><div className="admin-section-title"><div><span>FINANCE INSIGHTS</span><h2>Total collection</h2></div><small>Calculated from paid fee ledger entries</small></div><div className="collection-filters">{["daily","weekly","monthly","custom"].map(value=><button key={value} className={range===value?"active":""} onClick={()=>choose(value)}>{value[0].toUpperCase()+value.slice(1)}</button>)}</div>{range==="custom"&&<div className="collection-dates"><label>From<input type="date" value={from} onChange={event=>setFrom(event.target.value)}/></label><label>To<input type="date" value={to} onChange={event=>setTo(event.target.value)}/></label><button onClick={()=>load("custom")}>Apply dates</button></div>}{error&&<p className="collection-error">{error}</p>}<div className="collection-metrics"><article><small>TOTAL COLLECTED</small><strong>₹{Number(data?.total||0).toLocaleString("en-IN")}</strong><span>{data?.entries||0} paid entries</span></article><article><small>MONTHLY FEES</small><strong>₹{Number(data?.monthly||0).toLocaleString("en-IN")}</strong><span>Tuition collection</span></article><article><small>EXAM FEES</small><strong>₹{Number(data?.exam||0).toLocaleString("en-IN")}</strong><span>Assessment collection</span></article></div></section>}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -117,6 +120,7 @@ export default function AdminDashboard() {
           <div><span className="admin-kicker">SCHOOL ADMINISTRATION</span><h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1><p className="admin-sub">Welcome back, {admin?.admin_name || "Administrator"}. Here is your school overview.</p></div>
           <span className="school-code-chip">CODE · {schoolCode}</span>
         </div>
+        {activeTab === "overview" && <CollectionPanel/>}
         {activeTab !== "profile" && activeTab !== "fees" && <>{/* Search */}
         <div className="input-block">
           <Search className="field-icon"/><input

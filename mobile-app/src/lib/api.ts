@@ -15,6 +15,7 @@ export type Session =
   | { role: 'admin'; user: School; token: string }
   | { role: 'student'; user: Student; token: string };
 export type PlatformStats = { schools: number; students: number };
+export type CollectionAnalytics = { range: string; from: string; to: string; total: number; monthly: number; exam: number; entries: number };
 
 let accessToken = '';
 export const setAccessToken = (token?: string) => { accessToken = token || ''; };
@@ -79,6 +80,9 @@ export const loginAdmin = async (schoolCode: string, pin: string) => normalizeSe
 export const loginStudent = async (schoolCode: string, phone: string, pin: string) => normalizeSession('student', await request<LoginPayload>('/auth/student/login', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), pin: pin.trim() }) }));
 export const requestStudentPinReset = (schoolCode: string, phone: string, email: string) => request<{ sent: boolean; masked_email?: string }>('/auth/student/request-pin-reset', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), email: email.trim().toLowerCase() }) });
 export const resetStudentPin = (schoolCode: string, phone: string, email: string, otp: string, pin: string) => request<{ reset: boolean }>('/auth/student/reset-pin', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), number: phone.trim(), email: email.trim().toLowerCase(), otp, pin }) });
+export const requestAdminPinReset = (schoolCode: string, email: string) => request<{ sent: boolean; masked_email?: string }>('/auth/admin/request-pin-reset', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), email: email.trim().toLowerCase() }) });
+export const resetAdminPin = (schoolCode: string, email: string, otp: string, pin: string) => request<{ reset: boolean }>('/auth/admin/reset-pin', { method: 'POST', body: JSON.stringify({ school_code: schoolCode.trim(), email: email.trim().toLowerCase(), otp, pin }) });
+export const getCollectionAnalytics = (range = 'monthly', from?: string, to?: string) => request<CollectionAnalytics>('/analytics/collections' + query({ range, from, to }));
 export const registerPushToken = (token: string, platform: string) => request<{ registered: boolean }>('/push/register', { method:'POST',body:JSON.stringify({token,platform}) });
 export const getStats = () => request<PlatformStats>('/stats');
 export async function getSchool(schoolCode: string) { return first(await request<School[]>('/schools' + query({ school_code: schoolCode }))); }
@@ -136,5 +140,5 @@ export function mediaUrl(raw?: string | null) {
   const origin = API_URL.replace(/\/api$/, '');
   return raw.startsWith('/') ? origin + raw : `${origin}/${raw}`;
 }
-export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, requestStudentPinReset, resetStudentPin, registerPushToken, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile, compressImage };
+export const api = { adminLogin: loginAdmin, studentLogin: loginStudent, requestStudentPinReset, resetStudentPin, requestAdminPinReset, resetAdminPin, getCollectionAnalytics, registerPushToken, getStats, getSchool, getStudent, getStudents, getNotices: getNotifications, getFees, getResults, getExamTypes, createRecord, updateRecord, deleteRecord, uploadFile, compressImage };
 export { API_URL };

@@ -23,4 +23,5 @@ export async function registerForPushNotifications() {
   if(!projectId)return;
   const token=(await Notifications.getExpoPushTokenAsync({projectId})).data;
   await api.registerPushToken(token,Platform.OS);
+  return token;
 }

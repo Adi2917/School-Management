@@ -54,6 +54,7 @@ export default function RecordsScreen() {
       ]);
       setSchool(schoolRecord);
       setStudent(target);
+      if(kind==='fees')(data as Fee[]).forEach(fee=>{if((fee.status||'Pending')==='Pending'&&Number(fee.due_amount||0)===0)fee.due_amount=Number(fee.amount||0)+Number(fee.carried_due||0)});
       setRecords(data);
       if (kind === 'fees') { const fees=data as Fee[]; setFeeDrafts(Object.fromEntries(fees.map(fee => [fee.id || `${fee.fee_type || 'monthly'}-${fee.month || fee.exam_fee_id}`, { due: String(fee.due_amount ?? 0), status: fee.status || 'Pending', duesPaid:Boolean(fee.dues_paid) }]))); setSelectedExamFee(current=>current || fees.find(fee=>fee.fee_type==='exam')?.exam_fee_id || ''); }
       setExamTypes(exams);
@@ -100,7 +101,7 @@ export default function RecordsScreen() {
       const due = Number(feeDrafts[key]?.due || 0);
       const duesPaid = Boolean(feeDrafts[key]?.duesPaid);
       const balance=duesPaid?0:due;
-      await api.updateRecord('fees', fee.id, { status:balance>0&&status==='Paid'?'Partial':status, due_amount:balance, dues_paid:duesPaid, paid_at:status==='Paid'&&balance===0?new Date().toISOString():'' });
+      const savedStatus=balance>0&&status==='Paid'?'Partial':status;await api.updateRecord('fees', fee.id, { status:savedStatus, due_amount:balance, dues_paid:duesPaid, paid_at:savedStatus==='Pending'?'':new Date().toISOString() });
       if ((fee.fee_type || 'monthly') === 'monthly') { const monthly=(records as Fee[]).filter(item=>(item.fee_type||'monthly')==='monthly').sort((a,b)=>MONTHS.indexOf(a.month)-MONTHS.indexOf(b.month)); const next=monthly[monthly.findIndex(item=>item.id===fee.id)+1]; if(next?.id) await api.updateRecord('fees',next.id,{carried_due:balance}); }
       await load();
     } catch (error) { Alert.alert('Update failed', error instanceof Error ? error.message : 'Please retry.'); }

@@ -147,6 +147,7 @@ function AdminView({ school, students }: { school: School; students: Student[] |
       </View>
       <Text style={styles.sectionTitle}>School management</Text>
       <View style={styles.actions}>
+        <ActionCard icon="₹" value="Collection" label="Daily, weekly, monthly & custom reports" onPress={() => router.push('/collections' as never)} />
         <ActionCard icon="ID" value="Profile" label="Admin & school settings" onPress={() => router.push('/profile')} />
         <ActionCard icon="₹" value="Fee Setup" label="Monthly & exam fee configuration" onPress={() => router.push('/fee-setup' as never)} />
         <ActionCard icon="ALL" value={students ? String(students.length) : '—'} label="Student directory" onPress={() => router.push('/students')} />

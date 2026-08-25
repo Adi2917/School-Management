@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
 import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
-import { sendStudentPinOtp } from "../../server/lib/mailer.js";
+import { sendAdminPinOtp, sendStudentPinOtp } from "../../server/lib/mailer.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
@@ -16,7 +16,7 @@ const connect = () => {
   return connectionPromise;
 };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-const normalize = value => { const { _id, ...rest } = value; return sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); };
+const normalize = value => { const { _id, ...rest } = value; const record=sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
 const uniqueFilter = (collection, item) => {
   if (collection === "schools") return { school_code: item.school_code };
   if (collection === "students") return { email: String(item.email || "").trim().toLowerCase() };
@@ -176,6 +176,35 @@ export default async function handler(request) {
       const Otp=modelFor("pin_reset_otps"); const reset=await Otp.findOne({student_id:student.id,expires_at:{$gt:new Date()}}).sort({createdAt:-1});
       if(!reset||reset.attempts>=5||reset.digest!==otpDigest(body.otp)){if(reset)await Otp.updateOne({_id:reset._id},{$inc:{attempts:1}});return json({message:"The reset code is invalid or expired"},400);}
       const protectedPin=await protectCredentials("students",{pin:body.pin}); await Student.updateOne({_id:student._id},{$set:protectedPin,$unset:{pin:""}}); await Otp.deleteMany({student_id:student.id}); void mirrorCollection("students",Student); return json({data:{reset:true}});
+    }
+    if (route[0] === "auth" && route[1] === "admin" && route[2] === "request-pin-reset" && request.method === "POST") {
+      const body=await request.json(); const schoolCode=String(body.school_code||"").trim(); const email=String(body.email||"").trim().toLowerCase();
+      const School=modelFor("schools"); const school=await School.findOne({school_code:schoolCode,$or:[{email},{admin_email:email}]}).lean();
+      if(!school)return json({message:"No administrator matches these registered details"},404);
+      const otp=String(crypto.randomInt(1000,10000)); const Otp=modelFor("pin_reset_otps"); await Otp.deleteMany({account_type:"admin",school_code:schoolCode});
+      await Otp.create({id:crypto.randomUUID(),account_type:"admin",subject_id:String(school.id||school._id),school_code:schoolCode,digest:otpDigest(otp),expires_at:new Date(Date.now()+300000),attempts:0});
+      try { await sendAdminPinOtp({to:email,otp,adminName:school.admin_name,schoolName:school.school_name}); }
+      catch(mailError){await Otp.deleteMany({account_type:"admin",school_code:schoolCode});throw mailError;}
+      return json({data:{sent:true,masked_email:email.replace(/(^.).*(@.*$)/,"$1***$2")}});
+    }
+    if (route[0] === "auth" && route[1] === "admin" && route[2] === "reset-pin" && request.method === "POST") {
+      const body=await request.json(); if(!/^\d{4}$/.test(String(body.otp))||!/^\d{6}$/.test(String(body.pin)))return json({message:"Enter a valid 4-digit code and new 6-digit PIN"},400);
+      const schoolCode=String(body.school_code||"").trim(); const email=String(body.email||"").trim().toLowerCase(); const School=modelFor("schools");
+      const school=await School.findOne({school_code:schoolCode,$or:[{email},{admin_email:email}]}).lean(); if(!school)return json({message:"Administrator not found"},404);
+      const Otp=modelFor("pin_reset_otps"); const reset=await Otp.findOne({account_type:"admin",school_code:schoolCode,expires_at:{$gt:new Date()}}).sort({createdAt:-1});
+      if(!reset||reset.attempts>=5||reset.digest!==otpDigest(body.otp)){if(reset)await Otp.updateOne({_id:reset._id},{$inc:{attempts:1}});return json({message:"The reset code is invalid or expired"},400);}
+      const protectedPin=await protectCredentials("schools",{admin_pin:body.pin}); await School.updateOne({_id:school._id},{$set:protectedPin,$unset:{admin_pin:""}}); await Otp.deleteMany({account_type:"admin",school_code:schoolCode}); void mirrorCollection("schools",School); return json({data:{reset:true}});
+    }
+    if(route[0]==="analytics"&&route[1]==="collections"&&request.method==="GET"){
+      const claims=bearerClaims(request.headers);if(!claims||claims.role!=="admin")return json({message:"Unauthorized"},401);
+      const now=new Date();const range=String(url.searchParams.get("range")||"monthly");let from;let to=new Date(now);
+      if(range==="daily")from=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      else if(range==="weekly"){from=new Date(now.getFullYear(),now.getMonth(),now.getDate());from.setDate(from.getDate()-((from.getDay()+6)%7));}
+      else if(range==="custom"){from=new Date(`${url.searchParams.get("from")}T00:00:00+05:30`);to=new Date(`${url.searchParams.get("to")}T23:59:59.999+05:30`);if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime())||from>to)return json({message:"Choose a valid date range"},400);}
+      else from=new Date(now.getFullYear(),now.getMonth(),1);
+      const fees=(await modelFor("fees").find({school_code:String(claims.school_code),paid_at:{$nin:[null,""]}}).lean()).filter(fee=>{const paidAt=new Date(fee.paid_at);return !Number.isNaN(paidAt.getTime())&&paidAt>=from&&paidAt<=to;});
+      const totals=fees.reduce((sum,fee)=>{const paid=Math.max(0,Number(fee.amount||0)+Number(fee.carried_due||0)-Number(fee.due_amount||0));sum.total+=paid;sum.entries+=paid>0?1:0;if((fee.fee_type||"monthly")==="exam")sum.exam+=paid;else sum.monthly+=paid;return sum;},{total:0,monthly:0,exam:0,entries:0});
+      return json({data:{range,from:from.toISOString(),to:to.toISOString(),...totals}});
     }
     if (route[0] === "uploads" && request.method === "POST") {
       const form = await request.formData(); const file = form.get("file");

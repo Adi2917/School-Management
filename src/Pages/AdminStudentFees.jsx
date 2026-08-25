@@ -32,7 +32,7 @@ export default function AdminStudentFees() {
   const updateFee = async (fee, changes) => {
     if (fee.placeholder) return;
     const balance=Number(changes.due_amount??fee.due_amount??0);const status=changes.status==="Paid"&&balance>0?"Partial":changes.status;
-    const next={...changes,...(status?{status,paid_at:status==="Paid"?new Date().toISOString():""}:{})};
+    const next={...changes,...(status?{status,paid_at:status==="Pending"?"":new Date().toISOString()}:{})};
     setFees(current => current.map(item => item.id === fee.id ? { ...item, ...next, updating:true } : item));
     const { error } = await supabase.from("fees").update(next).eq("id", fee.id).eq("student_id", id);
     if (error) { alert("Fee update failed"); return load(); }

@@ -47,18 +47,18 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
 
   const requestOtp = async () => {
     setError('');
-    if (code.length !== 6 || phone.length !== 10 || !/^\S+@\S+\.\S+$/.test(email)) return setError('Enter your school code, phone and registered email.');
+    if (code.length !== 6 || (role === 'student' && phone.length !== 10) || !/^\S+@\S+\.\S+$/.test(email)) return setError(role === 'admin' ? 'Enter your school code and registered admin email.' : 'Enter your school code, phone and registered email.');
     setBusy(true);
-    try { await api.requestStudentPinReset(code, phone, email); setOtpSent(true); setOtpSeconds(300); setOtp(''); }
+    try { if(role==='admin')await api.requestAdminPinReset(code,email);else await api.requestStudentPinReset(code, phone, email); setOtpSent(true); setOtpSeconds(300); setOtp(''); }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not send OTP.'); }
     finally { setBusy(false); }
   };
 
   const resetPin = async () => {
     setError('');
-    if (otp.length !== 4 || newPin.length !== 4) return setError('Enter the 4-digit OTP and a new 4-digit PIN.');
+    const pinLength=role==='admin'?6:4;if (otp.length !== 4 || newPin.length !== pinLength) return setError(`Enter the 4-digit OTP and a new ${pinLength}-digit PIN.`);
     setBusy(true);
-    try { await api.resetStudentPin(code, phone, email, otp, newPin); setResetMode(false); setOtpSent(false); setOtpSeconds(0); setOtp(''); setNewPin(''); setPin(''); setError('PIN reset complete. You can now log in.'); }
+    try { if(role==='admin')await api.resetAdminPin(code,email,otp,newPin);else await api.resetStudentPin(code, phone, email, otp, newPin); setResetMode(false); setOtpSent(false); setOtpSeconds(0); setOtp(''); setNewPin(''); setPin(''); setError('PIN reset complete. You can now log in.'); }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not reset PIN.'); }
     finally { setBusy(false); }
   };
@@ -78,12 +78,12 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
           <Field label="6-digit school code" value={code} onChangeText={(value) => setCode(digits(value, 6))} keyboardType="number-pad" maxLength={6} />
           {role === 'student' && <Field label="Registered phone number" value={phone} onChangeText={(value) => setPhone(digits(value, 10))} keyboardType="phone-pad" maxLength={10} />}
           {!resetMode && <Field label={`${role === 'admin' ? '6' : '4'}-digit PIN`} value={pin} onChangeText={(value) => setPin(digits(value, role === 'admin' ? 6 : 4))} keyboardType="number-pad" secureTextEntry maxLength={role === 'admin' ? 6 : 4} onSubmitEditing={login} />}
-          {resetMode && <><Field label="Registered email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />{otpSent && otpSeconds > 0 && <><View style={styles.timer}><Text style={styles.timerLabel}>OTP valid for</Text><Text style={styles.timerValue}>{String(Math.floor(otpSeconds/60)).padStart(2,'0')}:{String(otpSeconds%60).padStart(2,'0')}</Text></View><Field label="4-digit OTP" value={otp} onChangeText={value => setOtp(digits(value, 4))} keyboardType="number-pad" maxLength={4}/><Field label="New 4-digit PIN" value={newPin} onChangeText={value => setNewPin(digits(value, 4))} keyboardType="number-pad" secureTextEntry maxLength={4}/></>}</>}
+          {resetMode && <><Field label={role==='admin'?'Registered admin email':'Registered email'} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />{otpSent && otpSeconds > 0 && <><View style={styles.timer}><Text style={styles.timerLabel}>OTP valid for</Text><Text style={styles.timerValue}>{String(Math.floor(otpSeconds/60)).padStart(2,'0')}:{String(otpSeconds%60).padStart(2,'0')}</Text></View><Field label="4-digit OTP" value={otp} onChangeText={value => setOtp(digits(value, 4))} keyboardType="number-pad" maxLength={4}/><Field label={`New ${role==='admin'?6:4}-digit PIN`} value={newPin} onChangeText={value => setNewPin(digits(value, role==='admin'?6:4))} keyboardType="number-pad" secureTextEntry maxLength={role==='admin'?6:4}/></>}</>}
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           <Pressable disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={resetMode ? (otpSent && otpSeconds > 0 ? resetPin : requestOtp) : login}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{resetMode ? (!otpSent || otpSeconds === 0 ? (otpSent ? 'Resend OTP' : 'Send secure OTP') : 'Verify OTP & reset PIN') : 'Open dashboard →'}</Text>}
           </Pressable>
-          {role === 'student' && <Pressable onPress={() => { setResetMode(value => !value); setOtpSent(false); setOtpSeconds(0); setError(''); }}><Text style={styles.resetLink}>{resetMode ? 'Back to student login' : 'Forgot PIN? Reset with email OTP'}</Text></Pressable>}
+          <Pressable onPress={() => { setResetMode(value => !value); setOtpSent(false); setOtpSeconds(0); setError(''); }}><Text style={styles.resetLink}>{resetMode ? `Back to ${role} login` : `Forgot ${role==='admin'?'Admin ':''}PIN? Reset with email OTP`}</Text></Pressable>
         </View>
         <Pressable onPress={() => router.push((role === 'admin' ? '/school-register' : '/student-register') as never)}>
           <Text style={styles.register}>{role === 'admin' ? 'New school? Register here' : 'New student? Register here'}</Text>

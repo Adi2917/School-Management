@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
+import "./premium-alert.css";
 
 import Home from "./Pages/Home";
 import StudentChoice from "./Pages/StudentChoice";
@@ -22,9 +24,11 @@ import PrivacyPolicy from "./Pages/PrivacyPolicy";
 import MainLayout from "./Layout/MainLayout";
 import ScrollToTop from "./Components/ScrollToTop";
 
+function PremiumAlert(){const[message,setMessage]=useState("");useEffect(()=>{const nativeAlert=window.alert;window.alert=value=>setMessage(String(value||"Please check the entered details."));return()=>{window.alert=nativeAlert}},[]);if(!message)return null;return <div className="premium-alert-backdrop" role="dialog" aria-modal="true" onMouseDown={()=>setMessage("")}><section className="premium-alert" onMouseDown={event=>event.stopPropagation()}><span>CONNECT YOUR SCHOOL</span><h2>Quick update</h2><p>{message}</p><button onClick={()=>setMessage("")}>Got it</button></section></div>}
+
 function App() {
   return (
-    <><ScrollToTop/><Routes>
+    <><ScrollToTop/><PremiumAlert/><Routes>
       {/* Home page – NO header */}
       <Route path="/" element={<Home />} />
       <Route path="/Home" element={<Home />} />

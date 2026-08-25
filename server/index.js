@@ -8,7 +8,7 @@ import multer from "multer";
 import { pathToFileURL } from "node:url";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "./lib/sheetSync.js";
 import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "./lib/auth.js";
-import { sendStudentPinOtp } from "./lib/mailer.js";
+import { sendAdminPinOtp, sendStudentPinOtp } from "./lib/mailer.js";
 
 dotenv.config();
 export const app = express();
@@ -19,7 +19,7 @@ app.use(express.json({ limit: "12mb" }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
 const modelFor = (name) => mongoose.models[name] || mongoose.model(name, schema, name);
-const normalize = (doc) => { const value = sanitizeRecord(doc); const { _id, ...rest } = value; return { id: rest.id || _id?.toString(), ...rest }; };
+const normalize = (doc) => { const value = sanitizeRecord(doc); const { _id, ...rest } = value; const record={ id: rest.id || _id?.toString(), ...rest }; if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
 const filterFrom = (params) => { const raw = Object.fromEntries(Object.entries(params).filter(([key]) => key !== "sort")); if (raw.id && mongoose.Types.ObjectId.isValid(raw.id)) { const { id, ...rest } = raw; return { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; } return raw; };
 const guard = (req, res, next) => {
   if (!allowed.has(req.params.collection)) return res.status(400).json({ message: "Unknown collection" });
@@ -158,6 +158,27 @@ app.post("/api/auth/student/reset-pin", async (req, res, next) => {
     void mirrorCollection("students", Student);
     res.json({ data: { reset: true } });
   } catch (error) { next(error); }
+});
+app.post("/api/auth/admin/request-pin-reset", async (req, res, next) => {
+  try {
+    const schoolCode=String(req.body?.school_code||"").trim();const email=String(req.body?.email||"").trim().toLowerCase();const School=modelFor("schools");
+    const school=await School.findOne({school_code:schoolCode,$or:[{email},{admin_email:email}]}).lean();if(!school)return res.status(404).json({message:"No administrator matches these registered details"});
+    const otp=String(crypto.randomInt(1000,10000));const Otp=modelFor("pin_reset_otps");await Otp.deleteMany({account_type:"admin",school_code:schoolCode});
+    await Otp.create({id:crypto.randomUUID(),account_type:"admin",subject_id:String(school.id||school._id),school_code:schoolCode,digest:otpDigest(otp),expires_at:new Date(Date.now()+300000),attempts:0});
+    try{await sendAdminPinOtp({to:email,otp,adminName:school.admin_name,schoolName:school.school_name});}catch(error){await Otp.deleteMany({account_type:"admin",school_code:schoolCode});throw error;}
+    res.json({data:{sent:true,masked_email:email.replace(/(^.).*(@.*$)/,"$1***$2")}});
+  } catch(error){next(error);}
+});
+app.post("/api/auth/admin/reset-pin", async (req,res,next)=>{
+  try{
+    const {school_code,email,otp,pin}=req.body||{};if(!/^\d{4}$/.test(String(otp))||!/^\d{6}$/.test(String(pin)))return res.status(400).json({message:"Enter a valid 4-digit code and new 6-digit PIN"});
+    const schoolCode=String(school_code||"").trim();const normalizedEmail=String(email||"").trim().toLowerCase();const School=modelFor("schools");const school=await School.findOne({school_code:schoolCode,$or:[{email:normalizedEmail},{admin_email:normalizedEmail}]}).lean();if(!school)return res.status(404).json({message:"Administrator not found"});
+    const Otp=modelFor("pin_reset_otps");const reset=await Otp.findOne({account_type:"admin",school_code:schoolCode,expires_at:{$gt:new Date()}}).sort({createdAt:-1});if(!reset||reset.attempts>=5||reset.digest!==otpDigest(otp)){if(reset)await Otp.updateOne({_id:reset._id},{$inc:{attempts:1}});return res.status(400).json({message:"The reset code is invalid or expired"});}
+    const protectedPin=await protectCredentials("schools",{admin_pin:pin});await School.updateOne({_id:school._id},{$set:protectedPin,$unset:{admin_pin:""}});await Otp.deleteMany({account_type:"admin",school_code:schoolCode});void mirrorCollection("schools",School);res.json({data:{reset:true}});
+  }catch(error){next(error);}
+});
+app.get("/api/analytics/collections",async(req,res,next)=>{
+  try{const claims=bearerClaims(req.headers);if(!claims||claims.role!=="admin")return res.status(401).json({message:"Unauthorized"});const now=new Date();const range=String(req.query.range||"monthly");let from;let to=new Date(now);if(range==="daily")from=new Date(now.getFullYear(),now.getMonth(),now.getDate());else if(range==="weekly"){from=new Date(now.getFullYear(),now.getMonth(),now.getDate());from.setDate(from.getDate()-((from.getDay()+6)%7));}else if(range==="custom"){from=new Date(`${req.query.from}T00:00:00+05:30`);to=new Date(`${req.query.to}T23:59:59.999+05:30`);if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime())||from>to)return res.status(400).json({message:"Choose a valid date range"});}else from=new Date(now.getFullYear(),now.getMonth(),1);const fees=(await modelFor("fees").find({school_code:String(claims.school_code),paid_at:{$nin:[null,""]}}).lean()).filter(fee=>{const paidAt=new Date(fee.paid_at);return !Number.isNaN(paidAt.getTime())&&paidAt>=from&&paidAt<=to;});const totals=fees.reduce((sum,fee)=>{const paid=Math.max(0,Number(fee.amount||0)+Number(fee.carried_due||0)-Number(fee.due_amount||0));sum.total+=paid;sum.entries+=paid>0?1:0;if((fee.fee_type||"monthly")==="exam")sum.exam+=paid;else sum.monthly+=paid;return sum;},{total:0,monthly:0,exam:0,entries:0});res.json({data:{range,from:from.toISOString(),to:to.toISOString(),...totals}});}catch(error){next(error);}
 });
 app.post("/api/sheet-sync", sheetAuth, async (req, res, next) => {
   try {

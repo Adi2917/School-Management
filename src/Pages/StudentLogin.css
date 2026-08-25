@@ -96,3 +96,4 @@
     opacity: 1;
   }
 }
+.login-card .text-action{background:#fffaf1;color:#9a6500;border:1px solid #eadcc7;box-shadow:none}.login-card .text-action:hover{box-shadow:none}.otp-timer{display:flex;justify-content:space-between;padding:12px 14px;border-radius:12px;background:#fff4d5;color:#6f675d}.otp-timer b{color:#9a6500}

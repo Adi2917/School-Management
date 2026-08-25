@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.setItemAsync(KEY, JSON.stringify(safeSession));
     setSession(safeSession);
   }, []);
-  useEffect(() => { if(session?.token) void registerForPushNotifications(); }, [session?.token]);
+  useEffect(() => { if(session?.token) void registerForPushNotifications().catch(error=>console.warn('Push notification registration failed',error)); }, [session?.token]);
   const signOut = useCallback(async () => { setAccessToken(); setSession(null); await SecureStore.deleteItemAsync(KEY); }, []);
   const updateUser = useCallback(async (user: School | Student) => {
     if (!session) return;
