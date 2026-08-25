@@ -11,12 +11,11 @@ export function clearSession(role) {
 
 export function getSessionDestination() {
   const activeRole = localStorage.getItem(SESSION_KEY);
+  const hasToken = Boolean(localStorage.getItem("connectYourSchoolToken"));
   const hasAdmin = Boolean(localStorage.getItem("schoolData") || localStorage.getItem("adminData"));
   const hasStudent = Boolean(localStorage.getItem("studentData"));
 
-  if (activeRole === "admin" && hasAdmin) return "/AdminDashboard";
-  if (activeRole === "student" && hasStudent) return "/StudentDashboard";
-  if (hasAdmin) return "/AdminDashboard";
-  if (hasStudent) return "/StudentDashboard";
+  if (hasToken && activeRole === "admin" && hasAdmin) return "/AdminDashboard";
+  if (hasToken && activeRole === "student" && hasStudent) return "/StudentDashboard";
   return null;
 }

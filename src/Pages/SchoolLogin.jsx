@@ -3,14 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { authLogin } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
-import { saveSession } from "../session";
+import { clearSession, saveSession } from "../session";
 import PinInput from "../Components/PinInput";
 
 export default function SchoolLogin() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    email: "",
     school_code: "",
     admin_pin: "",
   });
@@ -22,11 +21,10 @@ export default function SchoolLogin() {
   });
 
   useEffect(() => {
-    const schoolData = localStorage.getItem("schoolData");
-    if (schoolData) {
-      navigate("/AdminDashboard");
-    }
-  }, [navigate]);
+    clearSession("admin");
+    localStorage.removeItem("schoolData");
+    localStorage.removeItem("adminData");
+  }, []);
 
   const showPopup = (type, message) => {
     setPopup({ show: true, type, message });
@@ -49,7 +47,6 @@ export default function SchoolLogin() {
 
     try {
       const school = await authLogin("admin", {
-        email: form.email.trim(),
         school_code: form.school_code,
         pin: form.admin_pin,
       });
@@ -80,14 +77,6 @@ export default function SchoolLogin() {
         <h2>School Login</h2>
 
         <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            name="email"
-            placeholder="School Admin Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
           <input
             type="text"
             name="school_code"
