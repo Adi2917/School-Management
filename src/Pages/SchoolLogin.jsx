@@ -29,7 +29,8 @@ export default function SchoolLogin() {
   useEffect(()=>{if(!otpSeconds)return;const timer=window.setInterval(()=>setOtpSeconds(value=>Math.max(0,value-1)),1000);return()=>window.clearInterval(timer)},[otpSeconds]);
 
   const showPopup = (type, message) => {
-    setPopup({ show: true, type, message });
+    const finalMessage=type==="success"&&/OTP/i.test(message)?`${message} If it is not in Inbox, check Spam once and mark it Not spam.`:message;
+    setPopup({ show: true, type, message:finalMessage });
     setTimeout(() => {
       setPopup({ show: false, type: "", message: "" });
     }, 2500);

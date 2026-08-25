@@ -13,6 +13,7 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [info,setInfo]=useState('');
   const [resetMode, setResetMode] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -46,10 +47,10 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
   };
 
   const requestOtp = async () => {
-    setError('');
+    setError('');setInfo('');
     if (code.length !== 6 || (role === 'student' && phone.length !== 10) || !/^\S+@\S+\.\S+$/.test(email)) return setError(role === 'admin' ? 'Enter your school code and registered admin email.' : 'Enter your school code, phone and registered email.');
     setBusy(true);
-    try { if(role==='admin')await api.requestAdminPinReset(code,email);else await api.requestStudentPinReset(code, phone, email); setOtpSent(true); setOtpSeconds(300); setOtp(''); }
+    try { if(role==='admin')await api.requestAdminPinReset(code,email);else await api.requestStudentPinReset(code, phone, email); setOtpSent(true); setOtpSeconds(300); setOtp('');setInfo('OTP sent and valid for 5 minutes. If it is not in Inbox, check Spam once and mark it Not spam.'); }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not send OTP.'); }
     finally { setBusy(false); }
   };
@@ -80,6 +81,7 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
           {!resetMode && <Field label={`${role === 'admin' ? '6' : '4'}-digit PIN`} value={pin} onChangeText={(value) => setPin(digits(value, role === 'admin' ? 6 : 4))} keyboardType="number-pad" secureTextEntry maxLength={role === 'admin' ? 6 : 4} onSubmitEditing={login} />}
           {resetMode && <><Field label={role==='admin'?'Registered admin email':'Registered email'} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />{otpSent && otpSeconds > 0 && <><View style={styles.timer}><Text style={styles.timerLabel}>OTP valid for</Text><Text style={styles.timerValue}>{String(Math.floor(otpSeconds/60)).padStart(2,'0')}:{String(otpSeconds%60).padStart(2,'0')}</Text></View><Field label="4-digit OTP" value={otp} onChangeText={value => setOtp(digits(value, 4))} keyboardType="number-pad" maxLength={4}/><Field label={`New ${role==='admin'?6:4}-digit PIN`} value={newPin} onChangeText={value => setNewPin(digits(value, role==='admin'?6:4))} keyboardType="number-pad" secureTextEntry maxLength={role==='admin'?6:4}/></>}</>}
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+          {!!info && <Text style={styles.info}>{info}</Text>}
           <Pressable disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={resetMode ? (otpSent && otpSeconds > 0 ? resetPin : requestOtp) : login}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{resetMode ? (!otpSent || otpSeconds === 0 ? (otpSent ? 'Resend OTP' : 'Send secure OTP') : 'Verify OTP & reset PIN') : 'Open dashboard →'}</Text>}
           </Pressable>
@@ -107,6 +109,7 @@ const styles = StyleSheet.create({
   copy: { color: colors.muted, lineHeight: 21 },
   form: { gap: 14, marginTop: 4 },
   error: { color: colors.danger, fontWeight: '700', lineHeight: 19 },
+  info:{color:'#176b45',fontWeight:'700',lineHeight:19,backgroundColor:'#e4f6ed',padding:12,borderRadius:12},
   button: { minHeight: 58, justifyContent: 'center', backgroundColor: colors.ink, borderBottomWidth: 5, borderBottomColor: colors.gold, padding: 15, borderRadius: 16 },
   disabled: { opacity: 0.65 },
   buttonText: { color: '#fff', textAlign: 'center', fontWeight: '900', fontSize: 16 },

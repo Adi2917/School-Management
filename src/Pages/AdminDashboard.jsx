@@ -111,7 +111,7 @@ export default function AdminDashboard() {
       <div className="admin-command">
         <aside className="admin-command__rail">
           <div className="rail-logo"><BookOpen/></div><b>School<br/>Console</b>
-          <nav><button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><LayoutDashboard/> Overview</button><button className={activeTab === "students" ? "active" : ""} onClick={() => setActiveTab("students")}><Users/> Students</button><button className={activeTab === "fees" ? "active" : ""} onClick={() => setActiveTab("fees")}><ReceiptIndianRupee/> Fee setup</button><button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserCog/> Admin profile</button><button onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Notices</button></nav>
+          <nav><button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><LayoutDashboard/> Overview</button><button className={activeTab === "students" ? "active" : ""} onClick={() => setActiveTab("students")}><Users/> Students</button><button className={activeTab === "finance" ? "active" : ""} onClick={() => setActiveTab("finance")}><ReceiptIndianRupee/> Finance</button><button className={activeTab === "fees" ? "active" : ""} onClick={() => setActiveTab("fees")}><ReceiptIndianRupee/> Fee setup</button><button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}><UserCog/> Admin profile</button><button onClick={() => navigate("/AdminStudentNotification")}><BellRing/> Notices</button></nav>
           <div className="rail-secure"><ShieldCheck/><small>Protected<br/>workspace</small></div>
         </aside>
         <section className="dashboard-card">
@@ -120,8 +120,8 @@ export default function AdminDashboard() {
           <div><span className="admin-kicker">SCHOOL ADMINISTRATION</span><h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1><p className="admin-sub">Welcome back, {admin?.admin_name || "Administrator"}. Here is your school overview.</p></div>
           <span className="school-code-chip">CODE · {schoolCode}</span>
         </div>
-        {activeTab === "overview" && <CollectionPanel/>}
-        {activeTab !== "profile" && activeTab !== "fees" && <>{/* Search */}
+        {activeTab === "finance" && <CollectionPanel/>}
+        {activeTab !== "profile" && activeTab !== "fees" && activeTab !== "finance" && <>{/* Search */}
         <div className="input-block">
           <Search className="field-icon"/><input
             type="text"

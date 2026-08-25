@@ -69,10 +69,13 @@
 }
 
 .popup-box {
-  padding: 25px 45px;
+  width:min(440px,calc(100% - 32px));
+  padding: 25px 30px;
   border-radius: 16px;
   font-weight: 700;
   font-size: 15px;
+  line-height:1.55;
+  text-align:center;
   animation: popupScale 0.3s ease;
 }
 
@@ -97,3 +100,4 @@
   }
 }
 .login-card .text-action{background:#fffaf1;color:#9a6500;border:1px solid #eadcc7;box-shadow:none}.login-card .text-action:hover{box-shadow:none}.otp-timer{display:flex;justify-content:space-between;padding:12px 14px;border-radius:12px;background:#fff4d5;color:#6f675d}.otp-timer b{color:#9a6500}
+@media(max-width:600px){.login-container{padding:76px 10px 28px!important;align-items:flex-start}.login-card{margin-bottom:24px!important;padding-bottom:28px!important}.login-card form{padding-bottom:4px}.login-card .text-action{min-height:54px;height:auto;padding:12px 10px!important;line-height:1.35}}
