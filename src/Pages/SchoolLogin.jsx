@@ -4,6 +4,7 @@ import { authLogin } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
 import { saveSession } from "../session";
+import PinInput from "../Components/PinInput";
 
 export default function SchoolLogin() {
   const navigate = useNavigate();
@@ -97,8 +98,7 @@ export default function SchoolLogin() {
             onChange={handleChange}
             required
           />
-          <input
-            type="password"
+          <PinInput
             name="admin_pin"
             inputMode="numeric"
             maxLength="6"

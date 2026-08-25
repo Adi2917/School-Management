@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, Field } from '@/components/ui';
 import { colors } from '@/constants/colors';
@@ -65,7 +65,8 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
   return (
     <View style={styles.page}>
       <AppHeader back />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.scroll}>
       <View style={styles.shell}>
         <View style={styles.heading}>
           <Text style={styles.kicker}>{role === 'admin' ? 'SCHOOL ADMINISTRATION' : 'STUDENT WORKSPACE'}</Text>
@@ -89,12 +90,14 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
         <Text style={styles.help}>Your app and website always use the same live account.</Text>
       </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.cream },
+  flex: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 36 },
   shell: { width: '100%', maxWidth: 480, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 28, padding: 24, gap: 16, elevation: 5, shadowColor: colors.ink, shadowOpacity: 0.1, shadowRadius: 20 },
   heading: { gap: 8 },

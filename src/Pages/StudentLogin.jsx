@@ -4,6 +4,7 @@ import { authLogin, requestStudentPinReset, resetStudentPin } from "../supabaseC
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
 import { saveSession } from "../session";
+import PinInput from "../Components/PinInput";
 
 export default function StudentLogin() {
   const navigate = useNavigate();
@@ -51,8 +52,8 @@ export default function StudentLogin() {
         <form onSubmit={resetMode ? handleReset : handleLogin}>
           <input type="text" placeholder="Enter School Code" inputMode="numeric" maxLength="6" value={schoolCode} onChange={(e) => setSchoolCode(e.target.value.replace(/\D/g, ""))} required />
           <input type="text" placeholder="Enter Registered Number" inputMode="numeric" maxLength="10" value={number} onChange={(e) => setNumber(e.target.value.replace(/\D/g, ""))} required />
-          {!resetMode && <input type="password" placeholder="Enter 4 Digit PIN" inputMode="numeric" maxLength="4" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} required />}
-          {resetMode && <><input type="email" placeholder="Registered email" value={email} onChange={e=>setEmail(e.target.value)} required/>{otpSent&&otpSeconds>0&&<><div className="otp-timer">OTP valid for <b>{String(Math.floor(otpSeconds/60)).padStart(2,"0")}:{String(otpSeconds%60).padStart(2,"0")}</b></div><input placeholder="4 digit OTP" inputMode="numeric" maxLength="4" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,""))} required/><input type="password" placeholder="New 4 digit PIN" inputMode="numeric" maxLength="4" value={newPin} onChange={e=>setNewPin(e.target.value.replace(/\D/g,""))} required/></>}</>}
+          {!resetMode && <PinInput placeholder="Enter 4 Digit PIN" inputMode="numeric" maxLength="4" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} required />}
+          {resetMode && <><input type="email" placeholder="Registered email" value={email} onChange={e=>setEmail(e.target.value)} required/>{otpSent&&otpSeconds>0&&<><div className="otp-timer">OTP valid for <b>{String(Math.floor(otpSeconds/60)).padStart(2,"0")}:{String(otpSeconds%60).padStart(2,"0")}</b></div><input placeholder="4 digit OTP" inputMode="numeric" maxLength="4" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,""))} required/><PinInput placeholder="New 4 digit PIN" inputMode="numeric" maxLength="4" value={newPin} onChange={e=>setNewPin(e.target.value.replace(/\D/g,""))} required/></>}</>}
           <button type="submit" disabled={loading}>{loading ? "Please wait..." : resetMode ? !otpSent||otpSeconds===0 ? otpSent?"Resend OTP":"Send secure OTP" : "Verify OTP & reset PIN" : "Login"}</button>
           <button type="button" className="text-action" onClick={()=>{setResetMode(!resetMode);setOtpSent(false);setOtpSeconds(0)}}>{resetMode ? "Back to login" : "Forgot PIN? Reset with email OTP"}</button>
         </form>

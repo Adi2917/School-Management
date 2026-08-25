@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { AppHeader, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
@@ -45,7 +45,7 @@ export default function FeeSetupScreen() {
     finally { setSaving(false); }
   };
   if (!session) return null;
-  return <View style={styles.page}><AppHeader school={school || undefined} back/><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  return <View style={styles.page}><AppHeader school={school || undefined} back/><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
     <View style={styles.hero}><Text style={styles.kicker}>FINANCE CONFIGURATION</Text><Text style={styles.title}>Fee Setup</Text><Text style={styles.copy}>Set fees once for your school. Student ledgers use these class-wise amounts automatically.</Text></View>
     {busy ? <View style={styles.panel}><Skeleton width="55%" height={24}/>{[1,2,3,4].map(item=><Skeleton key={item} height={58}/>)}</View> : <>
       <View style={styles.panel}><Text style={styles.panelKicker}>MONTHLY FEES</Text><Text style={styles.panelTitle}>Class-wise monthly amount</Text><Text style={styles.hint}>Enter 0 when a class has no monthly fee.</Text>{CLASSES.map(item=><AmountRow key={item} title={label(item)} value={monthly[item] || ''} onChange={value=>setMonthly(current=>({...current,[item]:value}))}/>)}</View>
@@ -53,7 +53,7 @@ export default function FeeSetupScreen() {
       {examFees.length ? <View style={styles.panel}><Text style={styles.panelKicker}>SAVED EXAM FEES</Text>{examFees.map(item=><View key={item.id} style={styles.examCard}><View style={styles.flex}><Text style={styles.examName}>{item.name}</Text><Text style={styles.examType}>{item.type} · {Object.keys(item.class_amounts || {}).length} classes</Text></View><Pressable onPress={()=>setExamFees(current=>current.filter(fee=>fee.id!==item.id))}><Text style={styles.remove}>Remove</Text></Pressable></View>)}</View> : null}
       <Pressable disabled={saving} style={[styles.save,saving&&styles.disabled]} onPress={save}>{saving?<ActivityIndicator color="#fff"/>:<Text style={styles.saveText}>Save complete fee setup</Text>}</Pressable>
     </>}
-  </ScrollView></View>;
+  </ScrollView></KeyboardAvoidingView></View>;
 }
 
 function AmountRow({title,value,onChange}:{title:string;value:string;onChange:(value:string)=>void}) { return <View style={styles.amountRow}><Text style={styles.amountLabel}>{title}</Text><View style={styles.amountBox}><Text style={styles.rupee}>₹</Text><TextInput style={styles.amountInput} value={value} onChangeText={text=>onChange(text.replace(/\D/g,''))} keyboardType="number-pad" placeholder="Amount" placeholderTextColor="#948b80"/></View></View>; }

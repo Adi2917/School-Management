@@ -93,10 +93,15 @@ export function AppHeader({ school, back = true, onLogout }: { school?: { school
 }
 
 export function Field(props: TextInputProps & { label: string }) {
+  const [hidden, setHidden] = useState(Boolean(props.secureTextEntry));
+  const password = Boolean(props.secureTextEntry);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{props.label}</Text>
-      <TextInput placeholderTextColor="#9b9288" autoCapitalize="none" {...props} style={[styles.input, props.multiline && styles.multiline, props.style]} />
+      <View style={styles.inputShell}>
+        <TextInput placeholderTextColor="#9b9288" autoCapitalize="none" {...props} secureTextEntry={password ? hidden : false} style={[styles.input, password && styles.passwordInput, props.multiline && styles.multiline, props.style]} />
+        {password ? <Pressable accessibilityRole="button" accessibilityLabel={hidden ? 'Show PIN' : 'Hide PIN'} hitSlop={8} onPress={() => setHidden(value => !value)} style={styles.eyeButton}><Text style={styles.eyeText}>{hidden ? '\u25c9' : '\u25ce'}</Text></Pressable> : null}
+      </View>
     </View>
   );
 }
@@ -130,6 +135,10 @@ const styles = StyleSheet.create({
   logoutText: { color: colors.danger, fontWeight: '900', fontSize: 12 },
   field: { gap: 7 },
   label: { color: colors.ink, fontWeight: '800', fontSize: 13 },
-  input: { minHeight: 52, backgroundColor: '#fbf7ef', borderWidth: 1, borderColor: colors.line, borderRadius: 15, paddingHorizontal: 16, paddingVertical: 13, color: colors.ink, fontSize: 16 },
+  inputShell: { position: 'relative' },
+  input: { width: '100%', minHeight: 52, backgroundColor: '#fbf7ef', borderWidth: 1, borderColor: colors.line, borderRadius: 15, paddingHorizontal: 16, paddingVertical: 13, color: colors.ink, fontSize: 16 },
+  passwordInput: { paddingRight: 56 },
+  eyeButton: { position: 'absolute', right: 7, top: 5, width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  eyeText: { color: colors.brown, fontSize: 23, fontWeight: '900' },
   multiline: { minHeight: 92, textAlignVertical: 'top' },
 });

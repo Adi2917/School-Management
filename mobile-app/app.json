@@ -15,6 +15,7 @@
     "android": {
       "package": "in.connectyourschool.app",
       "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#F4B93A",
         "foregroundImage": "./assets/images/connect-your-school-foreground.png",

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AppHeader, Avatar, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
@@ -63,7 +63,7 @@ export default function RecordsScreen() {
     } finally { setBusy(false); }
   }, [kind, schoolCode, session, studentId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const remove = (collection: string, id?: string, after?: () => void) => id && Alert.alert(
     'Delete record?',
@@ -78,11 +78,17 @@ export default function RecordsScreen() {
     if (!studentId || !student) return;
     setSaving(true);
     try {
-      const existing = records as Fee[];
-      const monthly = MONTHS.filter(month => !existing.some(fee => (fee.fee_type || 'monthly') === 'monthly' && fee.month === month)).map(month => ({ student_id: studentId, school_code: schoolCode, month, fee_type: 'monthly', status: 'Pending', amount: Number(school?.monthly_fees?.[student.class || ''] || 0), due_amount: 0 }));
-      const exams = (school?.exam_fees || []).filter(item => !existing.some(fee => fee.fee_type === 'exam' && fee.exam_fee_id === item.id)).map(item => ({ student_id: studentId, school_code: schoolCode, month: item.name, title: `${item.name} · ${item.type}`, fee_type: 'exam', exam_fee_id: item.id, status: 'Pending', amount: Number(item.class_amounts[student.class || ''] || 0), due_amount: 0 }));
-      if (monthly.length || exams.length) await api.createRecord<Fee>('fees', [...monthly, ...exams]);
-      await load();
+      const latestSchool = await api.getSchool(schoolCode);
+      if (!latestSchool) throw new Error('School fee setup could not be loaded.');
+      const monthly = MONTHS.map(month => ({ student_id: studentId, school_code: schoolCode, month, fee_type: 'monthly', status: 'Pending', amount: Number(latestSchool.monthly_fees?.[student.class || ''] || 0), due_amount: 0 }));
+      const exams = (latestSchool.exam_fees || []).map(item => ({ student_id: studentId, school_code: schoolCode, month: item.name, title: `${item.name} · ${item.type}`, fee_type: 'exam', exam_fee_id: item.id, status: 'Pending', amount: Number(item.class_amounts[student.class || ''] || 0), due_amount: 0 }));
+      const synced = await api.createRecord<Fee>('fees', [...monthly, ...exams]);
+      setSchool(latestSchool);
+      setRecords(synced);
+      setFeeDrafts(Object.fromEntries(synced.map(fee => [fee.id || `${fee.fee_type || 'monthly'}-${fee.month || fee.exam_fee_id}`, { due: String(fee.due_amount ?? 0), status: fee.status || 'Pending', duesPaid: Boolean(fee.dues_paid) }])));
+      setSelectedExamFee(current => synced.some(fee => fee.exam_fee_id === current) ? current : synced.find(fee => fee.fee_type === 'exam')?.exam_fee_id || '');
+    } catch (error) {
+      Alert.alert('Sync failed', error instanceof Error ? error.message : 'Please retry.');
     } finally { setSaving(false); }
   };
 
@@ -180,7 +186,8 @@ export default function RecordsScreen() {
 
   return <View style={styles.page}>
     <AppHeader school={school || undefined} back />
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
       <View style={styles.hero}><Avatar name={student?.name || school?.school_name || 'CY'} uri={student?.photo_url || school?.school_logo} size={64}/><View style={styles.flex}><Text style={styles.kicker}>{kind.toUpperCase()} DESK · CODE {schoolCode}</Text><Text style={styles.title}>{kind === 'fees' ? 'Fee ledger' : kind === 'results' ? 'Exam results' : 'School notices'}</Text><Text style={styles.sub}>{student ? `${student.name} · Class ${student.class}-${student.section} · Roll ${student.roll}` : school?.school_name}</Text></View></View>
       {busy ? <RecordSkeleton /> : kind === 'fees' ? <>
         {admin ? <Action label={saving ? 'Syncing ledger...' : 'Sync ledger with school fee setup'} onPress={ensureFees}/> : null}
@@ -197,6 +204,7 @@ export default function RecordsScreen() {
       </>}
       {!busy && !records.length && !admin && <Text style={styles.empty}>No records available yet.</Text>}
     </ScrollView>
+    </KeyboardAvoidingView>
   </View>;
 }
 

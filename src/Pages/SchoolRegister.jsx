@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
 import EducationPanel from "../Components/EducationPanel";
+import PinInput from "../Components/PinInput";
 import { saveSession } from "../session";
 import "./StudentRegister.css";
 
@@ -171,7 +172,7 @@ export default function SchoolRegister() {
             onChange={handleChange}
             required
           />
-          <input
+          <PinInput
             name="admin_pin"
             placeholder="Admin Pin (6 digits)"
             value={form.admin_pin}

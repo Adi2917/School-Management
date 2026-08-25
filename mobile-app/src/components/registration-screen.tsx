@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, Field } from '@/components/ui';
 import { colors } from '@/constants/colors';
@@ -81,7 +81,8 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
 
   return <View style={styles.page}>
     <AppHeader back />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.scroll}>
     <View style={styles.shell}>
     <View style={styles.hero}><Text style={styles.kicker}>{isSchool ? 'SCHOOL ONBOARDING' : 'STUDENT ONBOARDING'}</Text><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
     <View style={styles.card}>
@@ -113,6 +114,7 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
     </View>
     </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   </View>;
 }
 
@@ -122,6 +124,7 @@ function Choice({ label, active, onPress }: { label: string; active: boolean; on
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.cream },
+  flex: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 16, paddingTop: 22, paddingBottom: 40 },
   shell: { width: '100%', maxWidth: 680, gap: 20 }, hero: { gap: 8, paddingHorizontal: 4 },
   kicker: { color: colors.brown, fontWeight: '900', letterSpacing: 1.6, fontSize: 10 }, title: { color: colors.ink, fontWeight: '900', fontSize: 38, lineHeight: 42, letterSpacing: -1 }, subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22 },

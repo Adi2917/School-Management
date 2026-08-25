@@ -22,9 +22,9 @@ export default function AdminStudentFees() {
     const [{ data: studentData }, { data: existing }] = await Promise.all([studentPromise, supabase.from("fees").select("*").eq("student_id", id)]);
     let schoolData={}; if (studentData) { setStudent(studentData); const response = await supabase.from("schools").select("*").eq("school_code", studentData.school_code).single(); schoolData=response.data||{}; setSchool(schoolData); }
     let records = existing || [];
-    const monthly=placeholders(id,studentData,schoolData).filter(item=>!records.some(fee=>(fee.fee_type||"monthly")==="monthly"&&fee.month===item.month)).map(item=>({student_id:item.student_id,school_code:item.school_code,fee_type:item.fee_type,month:item.month,amount:item.amount,due_amount:item.due_amount,status:item.status}));
-    const exams=(schoolData.exam_fees||[]).filter(item=>!records.some(fee=>fee.fee_type==="exam"&&fee.exam_fee_id===item.id)).map(item=>({student_id:id,school_code:studentData?.school_code,fee_type:"exam",exam_fee_id:item.id,title:`${item.name} · ${item.type}`,month:item.name,amount:Number(item.class_amounts?.[studentData?.class]||0),due_amount:0,status:"Pending"}));
-    if(monthly.length||exams.length){const{data}=await supabase.from("fees").insert([...monthly,...exams]);records=data||records;}
+    const monthly=placeholders(id,studentData,schoolData).map(item=>({student_id:item.student_id,school_code:item.school_code,fee_type:item.fee_type,month:item.month,amount:item.amount,due_amount:item.due_amount,status:item.status}));
+    const exams=(schoolData.exam_fees||[]).map(item=>({student_id:id,school_code:studentData?.school_code,fee_type:"exam",exam_fee_id:item.id,title:`${item.name} · ${item.type}`,month:item.name,amount:Number(item.class_amounts?.[studentData?.class]||0),due_amount:0,status:"Pending"}));
+    if(monthly.length||exams.length){const{data,error}=await supabase.from("fees").insert([...monthly,...exams]);if(!error)records=data||records;}
     setFees(sortedFees(records)); setSyncing(false);
   };
   useEffect(() => { load(); }, [id]);

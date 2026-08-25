@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AppHeader, Avatar, Skeleton } from '@/components/ui';
@@ -101,7 +101,8 @@ export default function ProfileScreen() {
   return (
     <View style={styles.page}>
       <AppHeader school={school || undefined} back />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
         {busy ? (
           <View style={styles.card}>
             <Skeleton width={112} height={112} radius={56} />
@@ -157,6 +158,7 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal visible={imageOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setImageOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setImageOpen(false)}>
@@ -174,10 +176,12 @@ export default function ProfileScreen() {
 }
 
 function Field({ label, compact, ...props }: React.ComponentProps<typeof TextInput> & { label: string; compact?: boolean }) {
+  const [hidden, setHidden] = useState(Boolean(props.secureTextEntry));
+  const password = Boolean(props.secureTextEntry);
   return (
     <View style={[styles.field, compact && styles.compactField]}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#948b80" {...props} style={styles.input} />
+      <View style={styles.inputShell}><TextInput placeholderTextColor="#948b80" {...props} secureTextEntry={password ? hidden : false} style={[styles.input, password && styles.passwordInput]} />{password ? <Pressable accessibilityRole="button" accessibilityLabel={hidden ? 'Show PIN' : 'Hide PIN'} onPress={() => setHidden(value => !value)} style={styles.eyeButton}><Text style={styles.eyeText}>{hidden ? '\u25c9' : '\u25ce'}</Text></Pressable> : null}</View>
     </View>
   );
 }
@@ -198,7 +202,11 @@ const styles = StyleSheet.create({
   configBox: { width:'100%', gap:10, padding:14, borderRadius:18, backgroundColor:colors.goldSoft }, configTitle:{color:colors.brown,fontWeight:'900',letterSpacing:1.2,fontSize:11}, configRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:colors.paper,padding:10,borderRadius:12}, configLabel:{flex:1,color:colors.ink,fontWeight:'800'}, amountInput:{width:120,minHeight:44,borderWidth:1,borderColor:colors.line,borderRadius:10,paddingHorizontal:10,color:colors.ink,backgroundColor:'#fbf7ef'}, addFee:{backgroundColor:colors.ink,borderRadius:12,padding:14},addFeeText:{color:'#fff',fontWeight:'900',textAlign:'center'},examFeeCard:{flexDirection:'row',alignItems:'center',backgroundColor:colors.paper,borderRadius:12,padding:12},flex:{flex:1},examFeeName:{fontWeight:'900',color:colors.ink},examFeeType:{color:colors.muted,fontSize:12,marginTop:3},removeFee:{color:colors.danger,fontWeight:'900'},
   compactField: { flex: 1, minWidth: 88 },
   label: { color: colors.ink, fontWeight: '800', fontSize: 12 },
-  input: { minHeight: 52, backgroundColor: '#fbf7ef', borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink, fontSize: 15 },
+  inputShell: { position: 'relative' },
+  input: { width: '100%', minHeight: 52, backgroundColor: '#fbf7ef', borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink, fontSize: 15 },
+  passwordInput: { paddingRight: 56 },
+  eyeButton: { position: 'absolute', right: 7, top: 5, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  eyeText: { color: colors.brown, fontSize: 23, fontWeight: '900' },
   save: { width: '100%', minHeight: 54, backgroundColor: colors.ink, borderBottomWidth: 5, borderBottomColor: colors.gold, borderRadius: 15, marginTop: 10, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.65 },
   saveText: { color: '#fff', fontWeight: '900', textAlign: 'center', fontSize: 16 },

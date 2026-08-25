@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
 import EducationPanel from "../Components/EducationPanel";
+import PinInput from "../Components/PinInput";
 import "./StudentRegister.css";
 
 export default function StudentRegister() {
@@ -192,7 +193,7 @@ export default function StudentRegister() {
           </select>
 
           <input name="roll" placeholder="Roll Number" onChange={handleChange} required />
-          <input name="pin" placeholder="4 Digit PIN" value={form.pin} onChange={handleChange} required />
+          <PinInput name="pin" inputMode="numeric" maxLength="4" placeholder="4 Digit PIN" value={form.pin} onChange={handleChange} required />
 
           <textarea name="address" placeholder="Address" onChange={handleChange} required />
 

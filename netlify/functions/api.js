@@ -43,6 +43,18 @@ const mirrorCollection = async (collection, Model) => {
     return { configured: true, error: error.message };
   }
 };
+const refreshSchoolLedgerAmounts = async school => {
+  if (!school?.school_code) return;
+  const students = await modelFor("students").find({ school_code:String(school.school_code) }, { id:1, class:1 }).lean();
+  const operations = [];
+  for (const className of Object.keys(school.monthly_fees || {})) {
+    const studentIds = students.filter(student => String(student.class) === className).map(student => String(student.id || student._id));
+    if (!studentIds.length) continue;
+    operations.push({ updateMany:{ filter:{ student_id:{ $in:studentIds }, $or:[{ fee_type:"monthly" },{ fee_type:{ $exists:false } }] }, update:{ $set:{ amount:Number(school.monthly_fees[className] || 0) } } } });
+    for (const exam of school.exam_fees || []) operations.push({ updateMany:{ filter:{ student_id:{ $in:studentIds },fee_type:"exam",exam_fee_id:exam.id }, update:{ $set:{ amount:Number(exam.class_amounts?.[className] || 0),title:`${exam.name} · ${exam.type}`,month:exam.name } } } });
+  }
+  if (operations.length) await modelFor("fees").bulkWrite(operations, { ordered:false });
+};
 const recordSchoolCode = async (collection, record) => {
   if (record?.school_code) return String(record.school_code);
   if (["fees", "results"].includes(collection) && record?.student_id) {
@@ -114,7 +126,7 @@ export default async function handler(request) {
       let auth = null;
       for (const record of records) { auth = await authenticate({ role, pin: String(body.pin || ""), record, Model }); if (auth) break; }
       if (!auth) return json({ message: "Invalid login details" }, 401);
-      await mirrorCollection(role === "admin" ? "schools" : "students", Model);
+      void mirrorCollection(role === "admin" ? "schools" : "students", Model);
       return json({ data: auth });
     }
     if (route[0] === "auth" && route[1] === "student" && route[2] === "request-pin-reset" && request.method === "POST") {
@@ -133,7 +145,7 @@ export default async function handler(request) {
       const Student=modelFor("students"); const student=await Student.findOne({school_code:String(body.school_code||"").trim(),number:String(body.number||"").trim(),email:String(body.email||"").trim().toLowerCase()}).lean(); if(!student)return json({message:"Student not found"},404);
       const Otp=modelFor("pin_reset_otps"); const reset=await Otp.findOne({student_id:student.id,expires_at:{$gt:new Date()}}).sort({createdAt:-1});
       if(!reset||reset.attempts>=5||reset.digest!==otpDigest(body.otp)){if(reset)await Otp.updateOne({_id:reset._id},{$inc:{attempts:1}});return json({message:"The reset code is invalid or expired"},400);}
-      const protectedPin=await protectCredentials("students",{pin:body.pin}); await Student.updateOne({_id:student._id},{$set:protectedPin,$unset:{pin:""}}); await Otp.deleteMany({student_id:student.id}); await mirrorCollection("students",Student); return json({data:{reset:true}});
+      const protectedPin=await protectCredentials("students",{pin:body.pin}); await Student.updateOne({_id:student._id},{$set:protectedPin,$unset:{pin:""}}); await Otp.deleteMany({student_id:student.id}); void mirrorCollection("students",Student); return json({data:{reset:true}});
     }
     if (route[0] === "uploads" && request.method === "POST") {
       const form = await request.formData(); const file = form.get("file");
@@ -165,9 +177,9 @@ export default async function handler(request) {
       for (const item of rawItems) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
       const items = await Promise.all(rawItems.map(async item => ({ ...(await protectCredentials(collection, item)), sheet_managed: false }))); const saved = [];
       if (collection === "fees" && items.length > 1) {
-        await Model.bulkWrite(items.map(item => ({ updateOne: { filter: item.fee_type === "exam" ? { student_id:item.student_id,fee_type:"exam",exam_fee_id:item.exam_fee_id } : { student_id:item.student_id,fee_type:item.fee_type || "monthly",month:item.month }, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } })), { ordered: false });
+        await Model.bulkWrite(items.map(item => ({ updateOne: { filter: item.fee_type === "exam" ? { student_id:item.student_id,fee_type:"exam",exam_fee_id:item.exam_fee_id } : { student_id:item.student_id,fee_type:item.fee_type || "monthly",month:item.month }, update: { $set: { school_code:item.school_code,student_id:item.student_id,fee_type:item.fee_type || "monthly",month:item.month,amount:Number(item.amount || 0),...(item.exam_fee_id ? { exam_fee_id:item.exam_fee_id } : {}),...(item.title ? { title:item.title } : {}) }, $setOnInsert: { id: item.id || crypto.randomUUID(),status:item.status || "Pending",due_amount:Number(item.due_amount || 0),dues_paid:false,sheet_managed:false } }, upsert: true } })), { ordered: false });
         const records = (await Model.find({ student_id: items[0].student_id }).lean()).map(normalize);
-        await mirrorCollection(collection, Model);
+        void mirrorCollection(collection, Model);
         return json({ data: records }, 201);
       }
       if (items.length > 1) {
@@ -175,15 +187,15 @@ export default async function handler(request) {
           const key = uniqueFilter(collection, item) || { id: item.id || crypto.randomUUID() };
           return { updateOne: { filter: key, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } };
         }), { ordered: false });
-        await mirrorCollection(collection, Model);
+        void mirrorCollection(collection, Model);
         return json({ data: items.map(normalize) }, 201);
       }
       for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } saved.push(normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject())); }
-      await mirrorCollection(collection, Model);
+      void mirrorCollection(collection, Model);
       return json({ data: saved }, 201);
     }
-    if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); if(collection==="students"&&rawChanges.pin!==undefined)return json({message:bearerClaims(request.headers)?.role==="admin"?"Admins cannot save or reset a student PIN":"Use email OTP to reset your PIN"},403); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); await mirrorCollection(collection, Model); return json({ data: records }); }
-    if (request.method === "DELETE") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to delete these records" },403); const result = await Model.deleteMany(filter); await mirrorCollection(collection, Model); return json({ data: result }); }
+    if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); if(collection==="students"&&rawChanges.pin!==undefined)return json({message:bearerClaims(request.headers)?.role==="admin"?"Admins cannot save or reset a student PIN":"Use email OTP to reset your PIN"},403); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); if(collection==="schools" && (rawChanges.monthly_fees!==undefined || rawChanges.exam_fees!==undefined)) await refreshSchoolLedgerAmounts(records[0]); void mirrorCollection(collection, Model); return json({ data: records }); }
+    if (request.method === "DELETE") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to delete these records" },403); const result = await Model.deleteMany(filter); void mirrorCollection(collection, Model); return json({ data: result }); }
     return json({ message: "Method not allowed" }, 405);
   } catch (error) { return json({ message: error.message }, Number(error.statusCode) || 500); }
 }
