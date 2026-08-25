@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { authLogin, supabase } from "../supabaseClient";
 import { uploadMedia } from "../mediaClient";
 import EducationPanel from "../Components/EducationPanel";
 import PinInput from "../Components/PinInput";
@@ -97,25 +97,18 @@ export default function SchoolRegister() {
     try {
       const uploadedLogo = schoolLogo ? await uploadMedia(schoolLogo) : "";
       const payload = { ...form, admin_email: form.email.trim().toLowerCase(), email: form.email.trim().toLowerCase(), school_logo: uploadedLogo, monthly_fees: Object.fromEntries(classes.map(item => [item, Number(monthlyFees[item])])), exam_fees: [], created_at: new Date().toISOString() };
-      const { error } = await supabase.from("schools").insert([payload]);
+      const { data: created, error } = await supabase.from("schools").insert([payload]);
 
       if (!error) {
-        syncSchoolRegistry(payload);
-        localStorage.setItem("schoolData", JSON.stringify(payload));
+        const authenticated = await authLogin("admin", { school_code:payload.school_code,pin:payload.admin_pin });
+        const safeSchool = authenticated || created?.[0];
+        syncSchoolRegistry(safeSchool);
+        localStorage.setItem("schoolData", JSON.stringify(safeSchool));
         saveSession("admin");
-        localStorage.setItem(
-          "adminData",
-          JSON.stringify({
-            email: payload.email,
-            admin_name: payload.admin_name,
-            school_name: payload.school_name,
-            school_code: payload.school_code,
-            admin_pin: payload.admin_pin,
-          })
-        );
+        localStorage.setItem("adminData", JSON.stringify(safeSchool));
         setLoading(false);
         showPopup("success", "Your school registration is done successfully");
-        setTimeout(() => navigate("/SchoolLogin"), 1800);
+        setTimeout(() => navigate("/AdminDashboard", { replace:true }), 900);
         return;
       }
     } catch (err) {

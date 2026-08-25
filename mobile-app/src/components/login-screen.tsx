@@ -37,6 +37,7 @@ export function LoginScreen({ role }: { role: 'admin' | 'student' }) {
         ? await api.adminLogin(code, pin)
         : await api.studentLogin(code, phone, pin);
       await signIn(authenticated);
+      if (router.canDismiss()) router.dismissAll();
       router.replace(role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Login failed. Please try again.');

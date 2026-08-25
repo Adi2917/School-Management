@@ -6,6 +6,7 @@ import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, St
 import { AppHeader, Field } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { api, compressImage, type School, type Student } from '@/lib/api';
+import { useAuth } from '@/context/auth-context';
 
 const classes = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const sections = ['A', 'B', 'C'];
@@ -22,6 +23,7 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
   const [school, setSchool] = useState<School | null>(null);
   const [busy, setBusy] = useState(false);
   const [monthlyFees, setMonthlyFees] = useState<Record<string, string>>(Object.fromEntries(classes.map(item => [item, ''])));
+  const { signIn } = useAuth();
   const isSchool = role === 'school';
   const title = isSchool ? 'Register your school' : 'Student registration';
   const subtitle = isSchool ? 'Create a secure school workspace for administrators and students.' : 'Join your registered school using its unique school code.';
@@ -57,7 +59,10 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
     const school_logo = await upload();
     if (classes.some(item => !monthlyFees[item] || Number(monthlyFees[item]) < 0)) throw new Error('Enter the monthly fee for every class from Nursery to 10th.');
     await api.createRecord<School>('schools', { ...value, admin_email: value.email.trim().toLowerCase(), email: value.email.trim().toLowerCase(), school_name: value.school_name.trim(), admin_name: value.admin_name.trim(), location: value.location.trim(), school_logo, monthly_fees: Object.fromEntries(classes.map(item => [item, Number(monthlyFees[item])])) });
-    Alert.alert('School registered', 'Your school workspace is ready. Sign in with the school code and admin PIN.', [{ text: 'Open login', onPress: () => router.replace('/admin-login') }]);
+    const authenticated = await api.adminLogin(value.school_code, value.admin_pin);
+    await signIn(authenticated);
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/admin-dashboard');
   };
   const submitStudent = async () => {
     const value = studentForm;
@@ -70,7 +75,10 @@ export function RegistrationScreen({ role }: { role: 'school' | 'student' }) {
     if (!matched) throw new Error('No registered school was found for this code.');
     const photo_url = await upload();
     await api.createRecord<Student>('students', { ...value, email: value.email.trim().toLowerCase(), name: value.name.trim(), father_name: value.father_name.trim(), roll: value.roll.trim(), address: value.address.trim(), school_name: matched.school_name, school_logo: matched.school_logo || '', photo_url });
-    Alert.alert('Student registered', 'Sign in with the same school code, phone number and PIN.', [{ text: 'Open login', onPress: () => router.replace('/student-login') }]);
+    const authenticated = await api.studentLogin(value.school_code, value.number, value.pin);
+    await signIn(authenticated);
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/student-dashboard');
   };
   const submit = async () => {
     if (busy) return; setBusy(true);

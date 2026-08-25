@@ -28,9 +28,9 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
   const recordId = String(sessionUser && 'id' in sessionUser ? sessionUser.id ?? '' : '');
   const schoolCode = sessionUser?.school_code ?? '';
 
-  const refresh = useCallback(async (manual = false) => {
+  const refresh = useCallback(async (manual = false, silent = false) => {
     if (!sessionUser || sessionRole !== role) return;
-    manual ? setRefreshing(true) : setSyncing(true);
+    if (!silent) manual ? setRefreshing(true) : setSyncing(true);
     setError('');
     try {
       if (role === 'admin') {
@@ -50,8 +50,7 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not sync data.');
     } finally {
-      setRefreshing(false);
-      setSyncing(false);
+      if (!silent) { setRefreshing(false); setSyncing(false); }
     }
   }, [recordId, role, schoolCode, sessionRole, sessionUser]);
 
@@ -59,6 +58,8 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
     if (loading) return;
     if (!session || session.role !== role) { router.replace('/'); return; }
     void refresh(false);
+    const liveRefresh = setInterval(() => void refresh(false, true), 1500);
+    return () => clearInterval(liveRefresh);
   }, [loading, role, sessionRole, refresh]));
 
   if (loading || !session || session.role !== role) return <View style={styles.boot}><Skeleton width={210} height={18} /><Skeleton width="88%" height={128} radius={24} /></View>;

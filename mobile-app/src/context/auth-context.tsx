@@ -19,7 +19,7 @@ function tokenSubject(token: string) { try { const payload=token.split('.')[1].r
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { SecureStore.getItemAsync(KEY).then(value => {
+  useEffect(() => { Promise.race<string | null>([SecureStore.getItemAsync(KEY), new Promise(resolve => setTimeout(() => resolve(null), 1800))]).then(value => {
     if (!value) return;
     const saved = JSON.parse(value) as Session;
     if (!saved?.token || !saved?.user || !['admin', 'student'].includes(saved.role)) {

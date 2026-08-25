@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { syncAllCollectionsToSheet, syncCollectionToSheet, syncMongoFromSheet } from "../../server/lib/sheetSync.js";
-import { authenticate, bearerClaims, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
+import { authenticate, bearerClaims, hashPin, protectCredentials, sanitizeRecord } from "../../server/lib/auth.js";
 import { sendStudentPinOtp } from "../../server/lib/mailer.js";
 
 const allowed = new Set(["schools", "students", "fees", "notifications", "results", "exam_types"]);
@@ -42,6 +42,15 @@ const mirrorCollection = async (collection, Model) => {
     console.error(`Google Sheet mirror failed for ${collection}:`, error.message);
     return { configured: true, error: error.message };
   }
+};
+const upsertActivityNotification = async ({ activityKey, schoolCode, studentId = null, audience, title, message, eventType }) => {
+  if (!schoolCode || !activityKey) return;
+  const now = new Date();
+  await modelFor("notifications").updateOne(
+    { activity_key: activityKey },
+    { $set: { school_code:String(schoolCode),student_id:studentId,audience,title,tittle:title,message,event_type:eventType,updated_at:now }, $setOnInsert:{ id:crypto.randomUUID(),created_at:now,sheet_managed:false } },
+    { upsert:true },
+  );
 };
 const refreshSchoolLedgerAmounts = async school => {
   if (!school?.school_code) return;
@@ -113,6 +122,11 @@ export default async function handler(request) {
         : await syncAllCollectionsToSheet(modelFor);
       return json({ data: result });
     }
+    if (route[0] === "maintenance" && route[1] === "repair-school-410006" && request.method === "POST") {
+      if (!authorizedForSheetSync(request)) return json({ message:"Unauthorized" },401);
+      const result=await modelFor("schools").updateOne({school_code:"410006"},{$set:{admin_pin_hash:await hashPin("610006")},$unset:{admin_pin:""}});
+      return json({data:{matched:result.matchedCount,updated:result.modifiedCount}});
+    }
     if (route[0] === "auth" && route[2] === "login" && request.method === "POST") {
       const role = route[1];
       if (!new Set(["admin", "student"]).has(role)) return json({ message: "Invalid account type" }, 400);
@@ -169,9 +183,10 @@ export default async function handler(request) {
     const Model = modelFor(collection); const rawFilter = Object.fromEntries([...url.searchParams].filter(([key]) => key !== "sort"));
     let filter = rawFilter;
     if (rawFilter.id && mongoose.Types.ObjectId.isValid(rawFilter.id)) { const { id, ...rest } = rawFilter; filter = { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; }
-    if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
+    if (request.method === "GET") { if(!(await authorizeRead(request,collection,rawFilter))) return json({message:"You are not allowed to view these records"},403); const claims=bearerClaims(request.headers); if(claims?.role==="admin" && collection!=="schools") filter={...filter,school_code:String(claims.school_code)}; if(claims?.role==="student"&&collection==="notifications")filter={...filter,$and:[{$or:[{audience:{$exists:false}},{audience:"student"},{audience:"all"}]},{$or:[{student_id:null},{student_id:""},{student_id:{$exists:false}},{student_id:String(claims.subject)}]}]}; let query = Model.find(filter); const sort = url.searchParams.get("sort"); if (sort) { const [field, direction] = sort.split(":"); query = query.sort({ [field]: direction === "desc" ? -1 : 1 }); } let records=(await query.lean()).map(normalize); if(collection==="schools"&&!claims)records=records.map(({school_code,school_name,school_logo,location})=>({school_code,school_name,school_logo,location})); return json({ data: records }); }
     if (request.method === "POST") {
       const body = await request.json(); const rawItems = Array.isArray(body) ? body : [body];
+      if (collection === "schools") { for (const item of rawItems) if (await Model.exists({ school_code:String(item.school_code||"").trim() })) return json({message:"This school code is already registered"},409); }
       if (collection === "students") { for (const item of rawItems) { const email=String(item.email||"").trim().toLowerCase(); const number=String(item.number||"").trim(); if(email && await Model.exists({email})) return json({message:"This email is already registered to a student"},409); if(number && await Model.exists({number})) return json({message:"This phone number is already registered to a student"},409); item.email=email; item.number=number; } }
       if (!(await authorizeMutation(request, collection, rawItems))) return json({ message: "You are not allowed to change these records" }, 403);
       for (const item of rawItems) { const validationError = validateRecord(collection, item); if (validationError) return json({ message: validationError }, 400); }
@@ -187,14 +202,15 @@ export default async function handler(request) {
           const key = uniqueFilter(collection, item) || { id: item.id || crypto.randomUUID() };
           return { updateOne: { filter: key, update: { $setOnInsert: { id: item.id || crypto.randomUUID(), ...item } }, upsert: true } };
         }), { ordered: false });
+        if(collection==="results"&&items[0])await upsertActivityNotification({activityKey:`result:${items[0].student_id}:${items[0].exam_type_id||items[0].exam_name}`,schoolCode:items[0].school_code,studentId:items[0].student_id,audience:"student",title:"Result updated",message:`Your ${items[0].exam_name||"exam"} result has been published.`,eventType:"result_updated"});
         void mirrorCollection(collection, Model);
         return json({ data: items.map(normalize) }, 201);
       }
-      for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } saved.push(normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject())); }
+      for (const item of items) { const key = uniqueFilter(collection, item); if (key && Object.values(key).every(v => v !== undefined)) { const existing = await Model.findOne(key).lean(); if (existing) { saved.push(normalize(existing)); continue; } } const created=normalize((await Model.create({ id: item.id || crypto.randomUUID(), ...item })).toObject()); saved.push(created); if(collection==="students")await upsertActivityNotification({activityKey:`student:${created.id}`,schoolCode:created.school_code,studentId:created.id,audience:"admin",title:"New student registered",message:`${created.name} joined Class ${created.class}-${created.section}.`,eventType:"student_registered"}); if(collection==="results")await upsertActivityNotification({activityKey:`result:${created.student_id}:${created.exam_type_id||created.exam_name}`,schoolCode:created.school_code,studentId:created.student_id,audience:"student",title:"Result updated",message:`Your ${created.exam_name||"exam"} result has been published.`,eventType:"result_updated"}); }
       void mirrorCollection(collection, Model);
       return json({ data: saved }, 201);
     }
-    if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); if(collection==="students"&&rawChanges.pin!==undefined)return json({message:bearerClaims(request.headers)?.role==="admin"?"Admins cannot save or reset a student PIN":"Use email OTP to reset your PIN"},403); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); if(collection==="schools" && (rawChanges.monthly_fees!==undefined || rawChanges.exam_fees!==undefined)) await refreshSchoolLedgerAmounts(records[0]); void mirrorCollection(collection, Model); return json({ data: records }); }
+    if (request.method === "PATCH") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to change these records" },403); const rawChanges = await request.json(); if(collection==="students"&&rawChanges.pin!==undefined)return json({message:bearerClaims(request.headers)?.role==="admin"?"Admins cannot save or reset a student PIN":"Use email OTP to reset your PIN"},403); const validationError = validateRecord(collection, rawChanges); if (validationError) return json({ message: validationError }, 400); const changes = await protectCredentials(collection, rawChanges); const unset = collection === "schools" && rawChanges.admin_pin !== undefined ? { admin_pin: "" } : undefined; await Model.updateMany(filter, { $set: { ...changes, sheet_managed: false }, ...(unset ? { $unset: unset } : {}) }); const records = (await Model.find(filter).lean()).map(normalize); if(collection==="schools" && (rawChanges.monthly_fees!==undefined || rawChanges.exam_fees!==undefined)) await refreshSchoolLedgerAmounts(records[0]); if(collection==="fees"&&records[0]&&rawChanges.status)await upsertActivityNotification({activityKey:`fee:${records[0].id}`,schoolCode:records[0].school_code,studentId:records[0].student_id,audience:"student",title:"Fee status updated",message:`${records[0].title||records[0].month||"Fee"} is now ${records[0].status}.`,eventType:"fee_updated"}); if(collection==="results"&&records[0])await upsertActivityNotification({activityKey:`result:${records[0].student_id}:${records[0].exam_type_id||records[0].exam_name}`,schoolCode:records[0].school_code,studentId:records[0].student_id,audience:"student",title:"Result updated",message:`Your ${records[0].exam_name||"exam"} result has been published.`,eventType:"result_updated"}); void mirrorCollection(collection, Model); return json({ data: records }); }
     if (request.method === "DELETE") { const targets=await Model.find(filter).lean(); if (!(await authorizeMutation(request,collection,targets))) return json({ message:"You are not allowed to delete these records" },403); const result = await Model.deleteMany(filter); void mirrorCollection(collection, Model); return json({ data: result }); }
     return json({ message: "Method not allowed" }, 405);
   } catch (error) { return json({ message: error.message }, Number(error.statusCode) || 500); }

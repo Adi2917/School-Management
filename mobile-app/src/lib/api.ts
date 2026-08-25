@@ -20,15 +20,24 @@ let accessToken = '';
 export const setAccessToken = (token?: string) => { accessToken = token || ''; };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(API_URL + path, {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  let response: Response;
+  try {
+    response = await fetch(API_URL + path, {
     ...options,
+    signal: controller.signal,
     headers: {
       Accept: 'application/json',
       ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
-  });
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Server is taking too long. Please try again.');
+    throw error;
+  } finally { clearTimeout(timeout); }
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {

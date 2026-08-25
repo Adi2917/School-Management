@@ -137,7 +137,7 @@ export default function RecordsScreen() {
     if (!title.trim() || !message.trim()) return Alert.alert('Complete title and message');
     setSaving(true);
     try {
-      const payload = { school_code: schoolCode, title: title.trim(), message: message.trim(), file_url: attachment?.url || '', file_type: attachment?.type || '', updated_at: new Date().toISOString() };
+      const payload = { school_code: schoolCode, audience:'student', student_id:null, event_type:'notice', title: title.trim(), message: message.trim(), file_url: attachment?.url || '', file_type: attachment?.type || '', updated_at: new Date().toISOString() };
       if (editingNotice?.id) await api.updateRecord('notifications', editingNotice.id, payload);
       else await api.createRecord('notifications', { ...payload, created_at: new Date().toISOString() });
       resetNotice(); await load();

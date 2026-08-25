@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "./AdminDashboard.css";
-import { BellRing, BookOpen, ChevronRight, Eye, GraduationCap, ImagePlus, LayoutDashboard, LogOut, Mail, MapPin, Phone, ReceiptIndianRupee, Save, Search, ShieldCheck, Trash2, Upload, UserCog, Users, X } from "lucide-react";
+import { BellRing, BookOpen, ChevronRight, Eye, ImagePlus, LayoutDashboard, LogOut, Mail, MapPin, Phone, ReceiptIndianRupee, Save, Search, ShieldCheck, Trash2, Upload, UserCog, Users, X } from "lucide-react";
 import { clearSession } from "../session";
 import { uploadMedia } from "../mediaClient";
 
@@ -117,12 +117,6 @@ export default function AdminDashboard() {
           <div><span className="admin-kicker">SCHOOL ADMINISTRATION</span><h1 className="school-title">{admin?.school_name || "Connect Your School"}</h1><p className="admin-sub">Welcome back, {admin?.admin_name || "Administrator"}. Here is your school overview.</p></div>
           <span className="school-code-chip">CODE · {schoolCode}</span>
         </div>
-        <div className="admin-stats">
-          <article><span><Users/></span><div><b>{allStudents.length}</b><small>Total students</small></div></article>
-          <article><span><GraduationCap/></span><div><b>{new Set(allStudents.map(s => s.class)).size}</b><small>Active classes</small></div></article>
-          <article><span><BellRing/></span><div><b>Live</b><small>School updates</small></div></article>
-        </div>
-
         {activeTab !== "profile" && activeTab !== "fees" && <>{/* Search */}
         <div className="input-block">
           <Search className="field-icon"/><input
