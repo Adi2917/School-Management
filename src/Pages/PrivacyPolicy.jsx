@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
         <h2>Photos and files</h2>
         <p>Photo-library access is requested only after you choose to upload a school logo, student photo or notice attachment. The app does not access media in the background.</p>
         <h2>Deletion and support</h2>
-        <p>Students can ask their school administrator to correct or delete their record. Schools can manage their records from the administrator portal. For product or deletion support, contact BeyondNull through <a href="https://beyondnull.in" target="_blank" rel="noreferrer">beyondnull.in</a>.</p>
+        <p>Students can ask their school administrator to correct or delete their record. Schools can manage their records from the administrator portal. For product, privacy or deletion support, email <a href="mailto:connectyourschool@gmail.com">connectyourschool@gmail.com</a> or contact BeyondNull through <a href="https://beyondnull.in" target="_blank" rel="noreferrer">beyondnull.in</a>.</p>
         <p style={{ marginTop: 36 }}><Link to="/">← Return to Connect Your School</Link></p>
       </article>
     </main>

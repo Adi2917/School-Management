@@ -117,6 +117,6 @@ export default function Home() {
         <a className="beyondnull-link" href="https://beyondnull.in" target="_blank" rel="noopener noreferrer">Visit BeyondNull <ExternalLink size={18}/></a>
       </section>
     </main>
-    <footer><span className="brand"><span className="brand-mark"><BookOpen size={20}/></span><span>Connect <b>Your School</b></span></span><p>One community. One connected school.</p></footer>
+    <footer><span className="brand"><span className="brand-mark"><BookOpen size={20}/></span><span>Connect <b>Your School</b></span></span><p>One community. One connected school.</p><p><a href="mailto:connectyourschool@gmail.com">connectyourschool@gmail.com</a> · <a href="https://connectyourschool.in">connectyourschool.in</a> · <a href="https://beyondnull.in" target="_blank" rel="noopener noreferrer">beyondnull.in</a></p></footer>
   </div>;
 }
