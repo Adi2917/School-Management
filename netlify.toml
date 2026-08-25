@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  # SMTP_USER is the public support/sender address displayed on the website.
+  # Keep credential scanning enabled for SMTP_PASS and every actual secret.
+  SECRETS_SCAN_OMIT_KEYS = "SMTP_USER"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
