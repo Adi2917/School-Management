@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "in.connectyourschool.app",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 6,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {

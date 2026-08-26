@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "340633136382",
+    "project_id": "connect-your-school",
+    "storage_bucket": "connect-your-school.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:340633136382:android:7db70f8eb4355baed4c9af",
+        "android_client_info": {
+          "package_name": "in.connectyourschool.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkHtGM_4YnrubQ7CZ2ZfvifUTYeUw-30U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
