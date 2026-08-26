@@ -66,3 +66,4 @@ select {
   font-size: 12px;
   color: #64748b;
 }
+.fee-ledger-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0;padding:6px;border-radius:15px;background:#eee3d3}.fee-ledger-tabs button{border:0;border-radius:11px;padding:13px;background:transparent;color:#6f675d;font-weight:900}.fee-ledger-tabs button.active{background:#292620;color:#fff}.exam-fee-select{width:100%;margin-bottom:18px;padding:14px;border:1px solid #e1d5c5;border-radius:12px;background:#fffaf1}.fee-status-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fee-status-buttons button{padding:11px;border:1px solid #eadcc7;border-radius:11px;background:#fee8e5;font-weight:800}.fee-status-buttons button.active{border:2px solid #eab33f}.fee-status-buttons button.paid{background:#dff4e6;border-color:#77bd92}@media(max-width:650px){.fee-ledger-tabs{position:sticky;top:70px;z-index:5}.fee-state label{display:grid;grid-template-columns:1fr}.fee-state input{width:100%!important}}

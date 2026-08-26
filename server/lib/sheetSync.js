@@ -4,7 +4,7 @@ import { google } from "googleapis";
 export const SHEET_DEFINITIONS = {
   schools: ["id", "school_code", "school_name", "admin_name", "email", "phone", "location", "school_logo", "monthly_fees", "exam_fees", "created_at", "updated_at", "pin_status"],
   students: ["id", "school_code", "school_name", "name", "father_name", "number", "email", "class", "section", "roll", "address", "photo_url", "created_at", "updated_at", "pin_status"],
-  fees: ["id", "student_id", "school_code", "fee_type", "exam_fee_id", "title", "month", "amount", "carried_due", "due_amount", "status", "paid_at", "created_at", "updated_at"],
+  fees: ["id", "student_id", "school_code", "fee_type", "exam_fee_id", "title", "month", "amount", "carried_due", "paid_amount", "due_amount", "status", "paid_at", "created_at", "updated_at"],
   notifications: ["id", "school_code", "student_id", "tittle", "message", "image_url", "file_url", "media_type", "created_at", "updated_at"],
   exam_types: ["id", "school_code", "name", "created_at", "updated_at"],
   results: ["id", "student_id", "school_code", "exam_type_id", "exam_name", "subject", "marks", "obtained_marks", "full_marks", "created_at", "updated_at"],

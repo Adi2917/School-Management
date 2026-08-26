@@ -16,7 +16,7 @@ const connect = () => {
   return connectionPromise;
 };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-const normalize = value => { const { _id, ...rest } = value; const record=sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
+const normalize = value => { const { _id, ...rest } = value; const record=sanitizeRecord({ id: rest.id || _id?.toString(), ...rest }); if(record.status==="Partial"){record.status="Paid";if(record.paid_amount===undefined)record.paid_amount=Math.max(0,Number(record.amount||0)+Number(record.carried_due||0)-Number(record.due_amount||0));} if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
 const uniqueFilter = (collection, item) => {
   if (collection === "schools") return { school_code: item.school_code };
   if (collection === "students") return { email: String(item.email || "").trim().toLowerCase() };
@@ -49,10 +49,10 @@ const sendExpoPush = async ({ schoolCode, studentId = null, audience, title, mes
   const [tokens,school]=await Promise.all([modelFor("push_tokens").distinct("token",tokenFilter),modelFor("schools").findOne({school_code:String(schoolCode)},{school_name:1}).lean()]);
   if(!tokens.length)return;
   const pushTitle=`${school?.school_name||"Connect Your School"} · ${title}`;
-  const payload=tokens.filter(token=>/^Expo(nent)?PushToken\[.+\]$/.test(token)).map(to=>({to,sound:"default",title:pushTitle,body:message,channelId:"school-updates",data:{eventType,schoolCode:String(schoolCode),studentId}}));
+  const payload=tokens.filter(token=>/^Expo(nent)?PushToken\[.+\]$/.test(token)).map(to=>({to,sound:"default",priority:"high",title:pushTitle,body:message,channelId:"school-updates",data:{eventType,schoolCode:String(schoolCode),studentId}}));
   if(!payload.length)return;
   const response=await fetch("https://exp.host/--/api/v2/push/send",{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json"},body:JSON.stringify(payload)});
-  if(!response.ok)console.error(`Expo push service failed (${response.status})`);
+  const result=await response.json().catch(()=>({}));if(!response.ok)console.error(`Expo push service failed (${response.status})`,result);else{const tickets=Array.isArray(result.data)?result.data:[result.data];for(let index=0;index<tickets.length;index+=1){const ticket=tickets[index];if(ticket?.status==="error"){console.error("Expo push ticket error",ticket.details?.error||ticket.message);if(ticket.details?.error==="DeviceNotRegistered"&&payload[index]?.to)await modelFor("push_tokens").deleteOne({token:payload[index].to});}}}
   } catch(error) { console.error("Expo push delivery failed:",error.message); }
 };
 const upsertActivityNotification = async ({ activityKey, schoolCode, studentId = null, audience, title, message, eventType }) => {
@@ -203,7 +203,7 @@ export default async function handler(request) {
       else if(range==="custom"){from=new Date(`${url.searchParams.get("from")}T00:00:00+05:30`);to=new Date(`${url.searchParams.get("to")}T23:59:59.999+05:30`);if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime())||from>to)return json({message:"Choose a valid date range"},400);}
       else from=new Date(now.getFullYear(),now.getMonth(),1);
       const fees=(await modelFor("fees").find({school_code:String(claims.school_code),paid_at:{$nin:[null,""]}}).lean()).filter(fee=>{const paidAt=new Date(fee.paid_at);return !Number.isNaN(paidAt.getTime())&&paidAt>=from&&paidAt<=to;});
-      const totals=fees.reduce((sum,fee)=>{const paid=Math.max(0,Number(fee.amount||0)+Number(fee.carried_due||0)-Number(fee.due_amount||0));sum.total+=paid;sum.entries+=paid>0?1:0;if((fee.fee_type||"monthly")==="exam")sum.exam+=paid;else sum.monthly+=paid;return sum;},{total:0,monthly:0,exam:0,entries:0});
+      const totals=fees.reduce((sum,fee)=>{const paid=fee.paid_amount!==undefined?Math.max(0,Number(fee.paid_amount)):Math.max(0,Number(fee.amount||0)+Number(fee.carried_due||0)-Number(fee.due_amount||0));sum.total+=paid;sum.entries+=paid>0?1:0;if((fee.fee_type||"monthly")==="exam")sum.exam+=paid;else sum.monthly+=paid;return sum;},{total:0,monthly:0,exam:0,entries:0});
       return json({data:{range,from:from.toISOString(),to:to.toISOString(),...totals}});
     }
     if (route[0] === "uploads" && request.method === "POST") {

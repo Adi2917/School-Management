@@ -19,7 +19,7 @@ app.use(express.json({ limit: "12mb" }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
 const modelFor = (name) => mongoose.models[name] || mongoose.model(name, schema, name);
-const normalize = (doc) => { const value = sanitizeRecord(doc); const { _id, ...rest } = value; const record={ id: rest.id || _id?.toString(), ...rest }; if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
+const normalize = (doc) => { const value = sanitizeRecord(doc); const { _id, ...rest } = value; const record={ id: rest.id || _id?.toString(), ...rest }; if(record.status==="Partial"){record.status="Paid";if(record.paid_amount===undefined)record.paid_amount=Math.max(0,Number(record.amount||0)+Number(record.carried_due||0)-Number(record.due_amount||0));} if(record.status==="Pending"&&record.amount!==undefined&&Number(record.due_amount||0)===0)record.due_amount=Number(record.amount||0)+Number(record.carried_due||0); return record; };
 const filterFrom = (params) => { const raw = Object.fromEntries(Object.entries(params).filter(([key]) => key !== "sort")); if (raw.id && mongoose.Types.ObjectId.isValid(raw.id)) { const { id, ...rest } = raw; return { ...rest, $or: [{ id }, { _id: new mongoose.Types.ObjectId(id) }] }; } return raw; };
 const guard = (req, res, next) => {
   if (!allowed.has(req.params.collection)) return res.status(400).json({ message: "Unknown collection" });
