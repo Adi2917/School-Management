@@ -10,11 +10,11 @@
     "ios": {
       "icon": "./assets/images/connect-your-school-icon.png",
       "bundleIdentifier": "in.connectyourschool.app",
-      "buildNumber": "5"
+      "buildNumber": "6"
     },
     "android": {
       "package": "in.connectyourschool.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#F4B93A",
