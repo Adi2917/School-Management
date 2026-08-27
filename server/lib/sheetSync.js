@@ -89,8 +89,8 @@ export const ensureSheetStructure = async () => {
     requestBody: { values: [
       ["CONNECT YOUR SCHOOL", "MongoDB mirror"],
       ["schema_version", "2"],
-      ["sync_mode", "two_way"],
-      ["deletion_policy", "missing Sheet row deletes its Sheet-managed MongoDB record"],
+      ["sync_mode", "safe two_way"],
+      ["deletion_policy", "Sheet rows may update records; missing rows never delete MongoDB records"],
       ["last_bootstrap", new Date().toISOString()],
     ] },
   });
@@ -115,12 +115,17 @@ const replaceTab = async (sheets, collection, documents) => {
     const document = normalize(item);
     return columns.map(column => serialize(column === "pin_status" ? "Protected" : document[column]));
   })];
-  await sheets.spreadsheets.values.clear({ spreadsheetId: process.env.GOOGLE_SHEET_ID, range: `'${tab}'!A:ZZ` });
+  // Write first, then clear only stale trailing rows. A failed Google write must
+  // never leave an empty Sheet that reverse sync could mistake for deletion.
   await sheets.spreadsheets.values.update({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range: `'${tab}'!A1`,
     valueInputOption: "RAW",
     requestBody: { values },
+  });
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: process.env.GOOGLE_SHEET_ID,
+    range: `'${tab}'!A${values.length + 1}:ZZ`,
   });
 };
 
@@ -184,33 +189,14 @@ const onlyValidReferences = async (collection, documents, modelFor) => {
   return documents;
 };
 
-const deleteStudentChildren = async (ids, modelFor) => {
-  if (!ids.length) return;
-  await Promise.all([
-    modelFor("fees").deleteMany({ student_id: { $in: ids } }),
-    modelFor("results").deleteMany({ student_id: { $in: ids } }),
-    modelFor("notifications").deleteMany({ student_id: { $in: ids } }),
-  ]);
-};
-
 const reconcile = async (collection, documents, modelFor) => {
   const Model = modelFor(collection);
-  const ids = documents.map(item => item.id);
-  const removed = await Model.find({ sheet_managed: true, ...(ids.length ? { id: { $nin: ids } } : {}) }).lean();
-  if (collection === "schools" && removed.length) {
-    const schoolCodes = removed.map(item => item.school_code);
-    const students = await modelFor("students").find({ school_code: { $in: schoolCodes } }).lean();
-    await deleteStudentChildren(students.map(item => item.id), modelFor);
-    await Promise.all(["students", "notifications", "exam_types", "results", "fees"].map(name => modelFor(name).deleteMany({ school_code: { $in: schoolCodes } })));
-  }
-  if (collection === "students") await deleteStudentChildren(removed.map(item => item.id), modelFor);
-  if (removed.length) await Model.deleteMany({ id: { $in: removed.map(item => item.id) } });
   if (documents.length) {
     await Model.bulkWrite(documents.map(document => ({
       updateOne: { filter: { id: document.id }, update: { $set: { ...document, sheet_managed: true } }, upsert: true },
     })), { ordered: false });
   }
-  return { upserted: documents.length, deleted: removed.length };
+  return { upserted: documents.length, deleted: 0 };
 };
 
 export const syncMongoFromSheet = async modelFor => {

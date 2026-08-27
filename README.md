@@ -48,8 +48,8 @@ Normal app registrations are written to MongoDB first and then mirrored to the S
 - 5 schools
 - Nursery, LKG, UKG and Classes 1–10
 - Sections A, B and C
-- 5 students in every class/section
-- 975 students in total
+- 8 students in every class/section
+- 1,560 students in total
 
 To clear the selected application database and create the demo dataset, set `CONFIRM_RESET_DATABASE` to the exact database name from `MONGODB_URI`, then run:
 

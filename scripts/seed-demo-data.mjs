@@ -1,6 +1,5 @@
 /* global process */
 import "dotenv/config";
-import crypto from "node:crypto";
 import mongoose from "mongoose";
 import { syncAllCollectionsToSheet } from "../server/lib/sheetSync.js";
 import { protectCredentials } from "../server/lib/auth.js";
@@ -17,13 +16,19 @@ const schoolSeeds = [
   ["410005", "Bright Future Academy", "Vikram Kumar", "Kolkata"],
 ];
 
+if (process.argv.includes("--dry-run")) {
+  const studentCount = schoolSeeds.length * classes.length * sections.length * 8;
+  console.log(`Validated demo plan: ${schoolSeeds.length} schools, ${classes.length} classes, ${sections.length} sections, ${studentCount} students.`);
+  process.exit(0);
+}
+
 const schema = new mongoose.Schema({}, { strict: false, timestamps: true, versionKey: false });
 const modelFor = name => mongoose.models[name] || mongoose.model(name, schema, name);
 const avatar = seed => `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f6bd3b&fontFamily=Arial`;
 
 const createdAt = new Date().toISOString();
 const schools = await Promise.all(schoolSeeds.map(async ([schoolCode, schoolName, adminName, city], index) => protectCredentials("schools", {
-  id: crypto.randomUUID(),
+  id: `demo-school-${schoolCode}`,
   school_code: schoolCode,
   school_name: schoolName,
   admin_name: adminName,
@@ -44,11 +49,11 @@ for (let schoolIndex = 0; schoolIndex < schools.length; schoolIndex += 1) {
   const school = schools[schoolIndex];
   for (let classIndex = 0; classIndex < classes.length; classIndex += 1) {
     for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
-      for (let roll = 1; roll <= 5; roll += 1) {
-        const serial = schoolIndex * 195 + classIndex * 15 + sectionIndex * 5 + roll;
+      for (let roll = 1; roll <= 8; roll += 1) {
+        const serial = schoolIndex * 312 + classIndex * 24 + sectionIndex * 8 + roll;
         const name = `${firstNames[(serial - 1) % firstNames.length]} ${lastNames[schoolIndex]}`;
         studentSeeds.push({
-          id: crypto.randomUUID(),
+          id: `demo-${school.school_code}-${classes[classIndex]}-${sections[sectionIndex]}-${roll}`,
           name,
           father_name: `${["Rajesh", "Suresh", "Manoj", "Amit", "Deepak"][schoolIndex]} ${lastNames[schoolIndex]}`,
           number: String(7000000000 + serial),
@@ -75,11 +80,6 @@ for (let offset = 0; offset < studentSeeds.length; offset += 24) {
   students.push(...await Promise.all(studentSeeds.slice(offset, offset + 24).map(document => protectCredentials("students", document))));
 }
 
-if (process.argv.includes("--dry-run")) {
-  console.log(`Validated demo plan: ${schools.length} schools, ${classes.length} classes, ${sections.length} sections, ${students.length} students.`);
-  process.exit(0);
-}
-
 if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is missing");
 await mongoose.connect(process.env.MONGODB_URI);
 const databaseName = mongoose.connection.name;
@@ -101,6 +101,7 @@ await Promise.all([
   modelFor("schools").collection.createIndex({ school_code:1 }, { unique:true }),
   modelFor("students").collection.createIndex({ email:1 }, { unique:true }),
   modelFor("students").collection.createIndex({ number:1 }, { unique:true }),
+  modelFor("students").collection.createIndex({ school_code:1,class:1,section:1,roll:1 }, { unique:true }),
 ]);
 
 const sheet = await syncAllCollectionsToSheet(modelFor);
