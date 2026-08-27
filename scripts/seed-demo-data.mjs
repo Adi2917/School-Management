@@ -75,6 +75,34 @@ for (let schoolIndex = 0; schoolIndex < schools.length; schoolIndex += 1) {
   }
 }
 
+if (process.argv.includes("--api")) {
+  const apiUrl = String(process.env.DEMO_API_URL || "https://connectyourschool.in/api").replace(/\/$/, "");
+  let inserted = 0;
+  let preserved = 0;
+  for (const school of schools) {
+    const loginResponse = await fetch(`${apiUrl}/auth/admin/login`, {
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({school_code:school.school_code,pin:"123456"}),
+    });
+    if (!loginResponse.ok) throw new Error(`Demo admin login failed for ${school.school_code}`);
+    const token = (await loginResponse.json()).data.token;
+    const existingResponse = await fetch(`${apiUrl}/students?school_code=${school.school_code}`, {headers:{Authorization:`Bearer ${token}`}});
+    if (!existingResponse.ok) throw new Error(`Could not read students for ${school.school_code}`);
+    const existing = (await existingResponse.json()).data || [];
+    const occupied = new Set(existing.map(item => `${item.class}|${String(item.section).toUpperCase()}|${item.roll}`));
+    const knownEmails = new Set(existing.map(item => String(item.email || "").toLowerCase()));
+    const pending = studentSeeds.filter(item => item.school_code === school.school_code && !occupied.has(`${item.class}|${item.section}|${item.roll}`) && !knownEmails.has(item.email));
+    preserved += existing.length;
+    for (let offset=0;offset<pending.length;offset+=24) {
+      const response = await fetch(`${apiUrl}/students`, {method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify(pending.slice(offset,offset+24))});
+      if (!response.ok) { const body=await response.json().catch(()=>({})); throw new Error(`${school.school_code} batch ${offset}: ${body.message||response.status}`); }
+      inserted += Math.min(24,pending.length-offset);
+      console.log(`${school.school_code}: ${Math.min(offset+24,pending.length)}/${pending.length}`);
+    }
+  }
+  console.log(`API seed complete: ${inserted} inserted, ${preserved} existing students preserved.`);
+  process.exit(0);
+}
+
 const students = [];
 for (let offset = 0; offset < studentSeeds.length; offset += 24) {
   students.push(...await Promise.all(studentSeeds.slice(offset, offset + 24).map(document => protectCredentials("students", document))));

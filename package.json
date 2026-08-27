@@ -8,6 +8,7 @@
     "dev:server": "node --watch server/index.js",
     "server": "node server/index.js",
     "seed:demo": "node scripts/seed-demo-data.mjs",
+    "seed:api": "node scripts/seed-demo-data.mjs --api",
     "seed:reset": "node scripts/seed-demo-data.mjs --reset",
     "seed:check": "node scripts/seed-demo-data.mjs --dry-run",
     "build": "vite build",
