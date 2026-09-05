@@ -20,7 +20,30 @@ export type CollectionAnalytics = { range: string; from: string; to: string; tot
 let accessToken = '';
 export const setAccessToken = (token?: string) => { accessToken = token || ''; };
 
+type CacheEntry = { value: unknown; expiresAt: number };
+const responseCache = new Map<string, CacheEntry>();
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+function cacheDuration(path: string) {
+  if (path === '/stats') return 60_000;
+  if (path.startsWith('/schools')) return 30_000;
+  if (path.startsWith('/students')) return 10_000;
+  return 0;
+}
+
+function clearResponseCache() {
+  responseCache.clear();
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = String(options.method || 'GET').toUpperCase();
+  const ttl = method === 'GET' ? cacheDuration(path) : 0;
+  const requestKey = `${accessToken}:${path}`;
+  const cached = ttl ? responseCache.get(requestKey) : undefined;
+  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  if (ttl && pendingRequests.has(requestKey)) return pendingRequests.get(requestKey) as Promise<T>;
+
+  const execute = async () => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   let response: Response;
@@ -49,7 +72,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (typeof payload === 'string') throw new Error('Server returned an invalid response.');
   const value = (payload && typeof payload === 'object' && 'data' in payload) ? payload.data : payload;
-  return normalizeUrls(value) as T;
+  const normalized = normalizeUrls(value) as T;
+  if (ttl) responseCache.set(requestKey, { value: normalized, expiresAt: Date.now() + ttl });
+  if (method !== 'GET') clearResponseCache();
+  return normalized;
+  };
+
+  const operation = execute();
+  if (ttl) pendingRequests.set(requestKey, operation);
+  try { return await operation; }
+  finally { if (ttl) pendingRequests.delete(requestKey); }
 }
 
 function normalizeUrls(value: unknown): unknown {

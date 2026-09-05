@@ -7,7 +7,10 @@ import "./Home.css";
 
 export default function Home() {
   const navigate = useNavigate();
-  const [communityStats, setCommunityStats] = useState({ schools: null, students: null });
+  const [communityStats, setCommunityStats] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("platformStats") || "null") || { schools: null, students: null }; }
+    catch { return { schools: null, students: null }; }
+  });
   useEffect(() => {
     const destination = getSessionDestination();
     if (destination) navigate(destination, { replace: true });
@@ -19,10 +22,12 @@ export default function Home() {
         const response = await fetch(`${API_URL}/stats`);
         if (!response.ok) throw new Error("Community stats unavailable");
         const body = await response.json();
-        if (active) setCommunityStats({
+        const latest = {
           schools: Number(body.data?.schools || 0),
           students: Number(body.data?.students || 0),
-        });
+        };
+        if (active) setCommunityStats(latest);
+        localStorage.setItem("platformStats", JSON.stringify(latest));
       } catch (error) {
         console.warn(error.message);
       }

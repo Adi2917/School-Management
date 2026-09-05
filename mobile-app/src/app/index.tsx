@@ -6,12 +6,21 @@ import { Brand, Page, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { api, PlatformStats } from '@/lib/api';
+import { loadStatsSnapshot, saveStatsSnapshot } from '@/lib/dashboard-cache';
 
 export default function WelcomeScreen() {
   const { session, loading } = useAuth();
   const [stats, setStats] = useState<PlatformStats>();
 
-  useEffect(() => { api.getStats().then(setStats).catch(() => undefined); }, []);
+  useEffect(() => {
+    let active = true;
+    void loadStatsSnapshot().then(value => { if (active && value) setStats(value); });
+    void api.getStats().then(value => {
+      if (active) setStats(value);
+      return saveStatsSnapshot(value);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (!loading && session) router.replace(session.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
   }, [loading, session]);

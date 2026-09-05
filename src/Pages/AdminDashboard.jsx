@@ -40,6 +40,10 @@ export default function AdminDashboard() {
     }
 
     const activeSchool = JSON.parse(schoolData || adminData || "{}");
+    try {
+      const cachedStudents = JSON.parse(localStorage.getItem(`schoolStudents:${activeSchool?.school_code}`) || "[]");
+      if (Array.isArray(cachedStudents)) setAllStudents(cachedStudents);
+    } catch { /* refresh below will replace an invalid cache */ }
     setAdmin(activeSchool);
     setProfileForm({ ...activeSchool, admin_pin: "" });
     setSchoolCode(activeSchool?.school_code || "");
@@ -47,7 +51,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!schoolCode) return;
-    const refreshStudents = () => Promise.all([supabase.from("students").select("*").eq("school_code", schoolCode),supabase.from("schools").select("*").eq("school_code",schoolCode).single()]).then(([{data},{data:school}])=>{setAllStudents(data||[]);if(school){setAdmin(school);setProfileForm(current=>({...school,admin_pin:current.admin_pin||""}));localStorage.setItem("schoolData",JSON.stringify(school));localStorage.setItem("adminData",JSON.stringify(school));}});
+    const refreshStudents = () => Promise.all([supabase.from("students").select("*").eq("school_code", schoolCode),supabase.from("schools").select("*").eq("school_code",schoolCode).single()]).then(([{data},{data:school}])=>{const latest=data||[];setAllStudents(latest);localStorage.setItem(`schoolStudents:${schoolCode}`,JSON.stringify(latest));if(school){setAdmin(school);setProfileForm(current=>({...school,admin_pin:current.admin_pin||""}));localStorage.setItem("schoolData",JSON.stringify(school));localStorage.setItem("adminData",JSON.stringify(school));}});
     refreshStudents();
     window.addEventListener("focus", refreshStudents);
     return () => { window.removeEventListener("focus", refreshStudents); };

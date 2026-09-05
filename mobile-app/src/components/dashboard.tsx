@@ -6,6 +6,7 @@ import { AppHeader, Avatar, Skeleton } from '@/components/ui';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { api, School, Student } from '@/lib/api';
+import { loadAdminDashboardSnapshot, saveAdminDashboardSnapshot } from '@/lib/dashboard-cache';
 
 type StudentExtra = {
   school?: School | null;
@@ -18,6 +19,7 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
   const { session, signOut, loading } = useAuth();
   const [freshUser, setFreshUser] = useState<School | Student>();
   const [students, setStudents] = useState<Student[] | null>(null);
+  const [studentSummary, setStudentSummary] = useState<{ count: number; sections: number } | null>(null);
   const [studentExtra, setStudentExtra] = useState<StudentExtra>({ notices: null, fees: null, results: null });
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -27,6 +29,18 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
   const sessionUser = session?.user;
   const recordId = String(sessionUser && 'id' in sessionUser ? sessionUser.id ?? '' : '');
   const schoolCode = sessionUser?.school_code ?? '';
+
+  useFocusEffect(useCallback(() => {
+    if (role !== 'admin' || !schoolCode) return;
+    let active = true;
+    void loadAdminDashboardSnapshot(schoolCode).then(snapshot => {
+      if (!active || !snapshot) return;
+      setFreshUser(current => current ?? snapshot.school);
+      setStudents(current => current ?? snapshot.students);
+      setStudentSummary(current => current ?? { count: snapshot.studentCount, sections: snapshot.activeSections });
+    });
+    return () => { active = false; };
+  }, [role, schoolCode]));
 
   const refresh = useCallback(async (manual = false, silent = false) => {
     if (!sessionUser || sessionRole !== role) return;
@@ -38,6 +52,8 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
         if (!school) throw new Error('School record not found.');
         setFreshUser(school);
         setStudents(latestStudents);
+        setStudentSummary({ count: latestStudents.length, sections: new Set(latestStudents.map(student => `${student.class}-${student.section}`)).size });
+        void saveAdminDashboardSnapshot(schoolCode, { school, students: latestStudents });
       } else {
         const student = await api.getStudent(recordId);
         if (!student) throw new Error('Student record not found.');
@@ -58,7 +74,7 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
     if (loading) return;
     if (!session || session.role !== role) { router.replace('/'); return; }
     void refresh(false);
-    const liveRefresh = setInterval(() => void refresh(false, true), 1500);
+    const liveRefresh = setInterval(() => void refresh(false, true), 15_000);
     return () => clearInterval(liveRefresh);
   }, [loading, role, sessionRole, refresh]));
 
@@ -89,7 +105,7 @@ export function Dashboard({ role }: { role: 'admin' | 'student' }) {
         {error ? <Pressable onPress={() => refresh(true)} style={styles.error}><Text style={styles.errorText}>{error} Tap to retry.</Text></Pressable> : null}
         {role === 'student'
           ? <StudentView student={user as Student} school={school} extra={studentExtra} />
-          : <AdminView school={user as School} students={students} />}
+          : <AdminView school={user as School} students={students} summary={studentSummary} />}
         <Text style={styles.sync}>{syncing ? 'Syncing latest records…' : 'Secure live data · Connect Your School'}</Text>
       </ScrollView>
     </View>
@@ -128,8 +144,9 @@ function StudentView({ student, school, extra }: { student: Student; school: Sch
   );
 }
 
-function AdminView({ school, students }: { school: School; students: Student[] | null }) {
-  const activeSections = students ? new Set(students.map((student) => `${student.class}-${student.section}`)).size : null;
+function AdminView({ school, students, summary }: { school: School; students: Student[] | null; summary: { count: number; sections: number } | null }) {
+  const studentCount = summary?.count ?? students?.length ?? null;
+  const activeSections = summary?.sections ?? (students ? new Set(students.map((student) => `${student.class}-${student.section}`)).size : null);
   return (
     <>
       <View style={styles.schoolBand}>
@@ -141,7 +158,7 @@ function AdminView({ school, students }: { school: School; students: Student[] |
         </View>
       </View>
       <View style={styles.grid}>
-        <Metric icon="STUDENTS" value={students ? String(students.length) : '—'} label="Registered students" />
+        <Metric icon="STUDENTS" value={studentCount === null ? '—' : String(studentCount)} label="Registered students" />
         <Metric icon="SECTIONS" value={activeSections === null ? '—' : String(activeSections)} label="Active class sections" />
         <Metric icon="STATUS" value="Online" label="Database connected" wide />
       </View>
@@ -150,7 +167,7 @@ function AdminView({ school, students }: { school: School; students: Student[] |
         <ActionCard icon="₹" value="Collection" label="Daily, weekly, monthly & custom reports" onPress={() => router.push('/collections' as never)} />
         <ActionCard icon="ID" value="Profile" label="Admin & school settings" onPress={() => router.push('/profile')} />
         <ActionCard icon="₹" value="Fee Setup" label="Monthly & exam fee configuration" onPress={() => router.push('/fee-setup' as never)} />
-        <ActionCard icon="ALL" value={students ? String(students.length) : '—'} label="Student directory" onPress={() => router.push('/students')} />
+        <ActionCard icon="ALL" value={studentCount === null ? '—' : String(studentCount)} label="Student directory" onPress={() => router.push('/students')} />
         <ActionCard icon="✦" value="Live" label="Manage school notices" onPress={() => router.push('/records?kind=notices')} />
       </View>
       <View style={styles.list}>
