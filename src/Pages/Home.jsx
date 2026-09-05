@@ -6,7 +6,7 @@ import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, Download, Ext
 import "./Home.css";
 import "./HomeDownload.css";
 
-const ANDROID_APK_URL = import.meta.env.VITE_ANDROID_APK_URL || "https://expo.dev/artifacts/eas/_b5OirWn6piWMPuHcjhSZg6qoYfCULqmr4AnrzZJfXM.apk";
+const ANDROID_APK_URL = import.meta.env.VITE_ANDROID_APK_URL || "https://expo.dev/artifacts/eas/y5SVkDi2rzNuQiPU8MTETzU4ZdPCp-lIq8vL0hKnG4U.apk";
 
 export default function Home() {
   const navigate = useNavigate();
