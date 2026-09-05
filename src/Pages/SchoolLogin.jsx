@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { authLogin, requestAdminPinReset, resetAdminPin } from "../supabaseClient";
 import "./StudentLogin.css";
 import EducationPanel from "../Components/EducationPanel";
-import { clearSession, saveSession } from "../session";
+import { getSessionDestination, saveSession } from "../session";
 import PinInput from "../Components/PinInput";
 
 export default function SchoolLogin() {
@@ -22,10 +22,9 @@ export default function SchoolLogin() {
   });
 
   useEffect(() => {
-    clearSession("admin");
-    localStorage.removeItem("schoolData");
-    localStorage.removeItem("adminData");
-  }, []);
+    const destination = getSessionDestination();
+    if (destination) navigate(destination, { replace: true });
+  }, [navigate]);
   useEffect(()=>{if(!otpSeconds)return;const timer=window.setInterval(()=>setOtpSeconds(value=>Math.max(0,value-1)),1000);return()=>window.clearInterval(timer)},[otpSeconds]);
 
   const showPopup = (type, message) => {

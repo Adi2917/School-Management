@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import "./premium-alert.css";
+import { clearExpiredSession, getSessionDestination, getSessionExpiresAt } from "./session";
 
 import Home from "./Pages/Home";
 import StudentChoice from "./Pages/StudentChoice";
@@ -26,9 +27,40 @@ import ScrollToTop from "./Components/ScrollToTop";
 
 function PremiumAlert(){const[message,setMessage]=useState("");useEffect(()=>{const nativeAlert=window.alert;window.alert=value=>setMessage(String(value||"Please check the entered details."));return()=>{window.alert=nativeAlert}},[]);if(!message)return null;return <div className="premium-alert-backdrop" role="dialog" aria-modal="true" onMouseDown={()=>setMessage("")}><section className="premium-alert" onMouseDown={event=>event.stopPropagation()}><span>CONNECT YOUR SCHOOL</span><h2>Quick update</h2><p>{message}</p><button onClick={()=>setMessage("")}>Got it</button></section></div>}
 
+const publicEntryPaths = new Set(["/", "/Home", "/StudentChoice", "/StudentRegister", "/StudentLogin", "/SchoolRegister", "/SchoolLogin", "/AdminLogin"]);
+
+function SessionController() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const destination = getSessionDestination();
+    if (destination && publicEntryPaths.has(location.pathname)) {
+      navigate(destination, { replace: true });
+    }
+
+    const expiresAt = getSessionExpiresAt();
+    if (!expiresAt) return undefined;
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      clearExpiredSession();
+      navigate("/Home", { replace: true });
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      clearExpiredSession();
+      navigate("/Home", { replace: true });
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
-    <><ScrollToTop/><PremiumAlert/><Routes>
+    <><ScrollToTop/><SessionController/><PremiumAlert/><Routes>
       {/* Home page – NO header */}
       <Route path="/" element={<Home />} />
       <Route path="/Home" element={<Home />} />
