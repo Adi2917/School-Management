@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSessionDestination } from "../session";
 import { API_URL } from "../supabaseClient";
-import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, Download, ExternalLink, GraduationCap, ShieldCheck, Sparkles, Users } from "lucide-react";
 import "./Home.css";
+import "./HomeDownload.css";
+
+const ANDROID_APK_URL = import.meta.env.VITE_ANDROID_APK_URL || "https://expo.dev/artifacts/eas/_b5OirWn6piWMPuHcjhSZg6qoYfCULqmr4AnrzZJfXM.apk";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ export default function Home() {
         <span>Connect <b>Your School</b></span>
       </button>
       <div className="nav-links"><a href="#features">Features</a><a href="#platform">Platform</a></div>
-      <button className="nav-cta" onClick={() => navigate("/StudentChoice")}>Open portal <ArrowRight size={17}/></button>
+      <div className="nav-actions"><a className="nav-download" href={ANDROID_APK_URL} download="Connect-Your-School.apk"><Download size={17}/> Download app</a><button className="nav-cta" onClick={() => navigate("/StudentChoice")}>Open portal <ArrowRight size={17}/></button></div>
     </nav>
 
     <main>
@@ -59,6 +62,7 @@ export default function Home() {
             <button className="primary-action" onClick={() => navigate("/SchoolRegister")}>Register your school <ArrowRight size={19}/></button>
             <button className="secondary-action" onClick={() => navigate("/StudentChoice")}>Join your school</button>
           </div>
+          <a className="apk-download-card" href={ANDROID_APK_URL} download="Connect-Your-School.apk"><span className="apk-download-icon"><Download/></span><span><small>ANDROID APP · VERSION 1.0.1</small><b>Download Connect Your School</b><em>Secure APK · Install directly on Android</em></span><ArrowRight/></a>
           <div className="trust-row"><span><CheckCircle2/> Easy setup</span><span><CheckCircle2/> Secure records</span><span><CheckCircle2/> Student friendly</span></div>
         </div>
         <div className="hero-visual" aria-hidden="true">
